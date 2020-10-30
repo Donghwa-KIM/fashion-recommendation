@@ -10,8 +10,8 @@ _ext
 *.pyc
 *.pyd
 *.so
-detectron2.egg-info/
-build/
+.detectron2.egg-info/
+.build/
 dist/
 wheels/
 
@@ -24,7 +24,7 @@ wheels/
 
 # ipython/jupyter notebooks
 *.ipynb
-*ipynb_checkpoints
+*ipynb_checkpoints/*
 
 # Editor temporaries
 *.swn
@@ -37,11 +37,10 @@ wheels/
 .vscode
 
 # project dirs
-detectron2/model_zoo/configs
-detectron2/_C.cpython-36m-x86_64-linux-gnu.so
+.detectron2/model_zoo/configs
+.detectron2/_C.cpython-36m-x86_64-linux-gnu.so
 
 
 
 # output
-dataset/*
-build/*
+.dataset/*
