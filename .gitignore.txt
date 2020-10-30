@@ -10,6 +10,7 @@ inference_test_output
 
 # compilation and distribution
 *__pycache__
+*/__pycache__/*
 _ext
 *.pyc
 *.pyd
@@ -18,6 +19,8 @@ detectron2.egg-info/
 build/
 dist/
 wheels/
+
+*/.ipynb_checkpoints/*
 
 # pytorch/python/numpy formats
 *.pth
