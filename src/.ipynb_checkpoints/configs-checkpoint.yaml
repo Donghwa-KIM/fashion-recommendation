@@ -1,0 +1,28 @@
+# Detectron2 hyperparameters
+Detectron2:
+    EVAL_PERIOD : 100
+    DATALOADER_NUM_WORKERS : 7
+    SOLVER_IMS_PER_BATCH : 3
+    SOLVER_BASE_LR : 0.001
+    SOLVER_CHECKPOINT_PERIOD : 100 #200
+    SOLVER_MAX_ITER : 20000 #20000 
+    SOLVER_LR_SCHEDULER_NAME: 'WarmupCosineLR'
+    MODEL_ROI_HEADS_BATCH_SIZE_PER_IMAGE : 512
+    LABEL_LIST : 
+        Deepfashion: ['short sleeve top',
+                 'long sleeve top',
+                 'short sleeve outwear',
+                 'long sleeve outwear',
+                 'vest',
+                 'sling',
+                 'shorts',
+                 'trousers',
+                 'skirt',
+                 'short sleeve dress',
+                 'long sleeve dress',
+                 'vest dress',
+                 'sling dress']
+        Kfashion :
+
+    
+    
