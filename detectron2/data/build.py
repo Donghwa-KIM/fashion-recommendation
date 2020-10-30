@@ -27,6 +27,7 @@ This file contains the default logic to build a dataloader for training or testi
 __all__ = [
     "build_batch_data_loader",
     "build_detection_train_loader",
+    "build_detection_val_loader",
     "build_detection_test_loader",
     "get_detection_dataset_dicts",
     "load_proposals_into_dataset",
@@ -354,6 +355,50 @@ def build_detection_train_loader(cfg, mapper=None):
         num_workers=cfg.DATALOADER.NUM_WORKERS,
     )
 
+def build_detection_val_loader(cfg, dataset_name, mapper):
+    """
+    Similar to `build_detection_train_loader`.
+    But this function uses the given `dataset_name` argument (instead of the names in cfg),
+    and uses batch size 1.
+
+    Args:
+        cfg: a detectron2 CfgNode
+        dataset_name (str): a name of the dataset that's available in the DatasetCatalog
+        mapper (callable): a callable which takes a sample (dict) from dataset
+           and returns the format to be consumed by the model.
+           By default it will be `DatasetMapper(cfg, False)`.
+
+    Returns:
+        DataLoader: a torch DataLoader, that loads the given detection
+        dataset, with test-time transformation and batching.
+    """
+    dataset_dicts = get_detection_dataset_dicts(
+        [dataset_name],
+        filter_empty=False,
+        proposal_files=[
+            cfg.DATASETS.PROPOSAL_FILES_TEST[list(cfg.DATASETS.TEST).index(dataset_name)]
+        ]
+        if cfg.MODEL.LOAD_PROPOSALS
+        else None,
+    )
+
+    dataset = DatasetFromList(dataset_dicts)
+    dataset = MapDataset(dataset, mapper)
+
+    sampler = InferenceSampler(len(dataset))
+    # Always use 1 image per worker during inference since this is the
+    # standard when reporting inference time in papers.
+    batch_sampler = torch.utils.data.sampler.BatchSampler(sampler,
+                                                          cfg.SOLVER.IMS_PER_BATCH,
+                                                          drop_last=False)
+
+    data_loader = torch.utils.data.DataLoader(
+        dataset,
+        num_workers=cfg.DATALOADER.NUM_WORKERS,
+        batch_sampler=batch_sampler,
+        collate_fn=trivial_batch_collator,
+    )
+    return data_loader
 
 def build_detection_test_loader(cfg, dataset_name, mapper=None):
     """
@@ -399,6 +444,7 @@ def build_detection_test_loader(cfg, dataset_name, mapper=None):
         collate_fn=trivial_batch_collator,
     )
     return data_loader
+
 
 
 def trivial_batch_collator(batch):

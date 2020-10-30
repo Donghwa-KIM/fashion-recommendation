@@ -24,6 +24,7 @@ from detectron2.checkpoint import DetectionCheckpointer
 from detectron2.data import (
     MetadataCatalog,
     build_detection_test_loader,
+    build_detection_val_loader,
     build_detection_train_loader,
 )
 from detectron2.evaluation import (
@@ -41,9 +42,10 @@ from detectron2.utils.events import CommonMetricPrinter, JSONWriter, Tensorboard
 from detectron2.utils.logger import setup_logger
 
 from . import hooks
-from .train_loop import SimpleTrainer, TrainerBase
+from .train_loop import SimpleTrainer
 
-__all__ = ["default_argument_parser", "default_setup", "DefaultPredictor", "DefaultTrainer"]
+__all__ = ["default_argument_parser", "default_setup", "DefaultPredictor", "DefaultTrainer", "FashionTrainer"]
+
 
 
 def default_argument_parser(epilog=None):
@@ -62,10 +64,7 @@ def default_argument_parser(epilog=None):
 Examples:
 
 Run on single machine:
-    $ {sys.argv[0]} --num-gpus 8 --config-file cfg.yaml
-
-Change some config options:
-    $ {sys.argv[0]} --config-file cfg.yaml MODEL.WEIGHTS /path/to/weight.pth SOLVER.BASE_LR 0.001
+    $ {sys.argv[0]} --num-gpus 8 --config-file cfg.yaml MODEL.WEIGHTS /path/to/weight.pth
 
 Run on multiple machines:
     (machine0)$ {sys.argv[0]} --machine-rank 0 --num-machines 2 --dist-url <URL> [--other-flags]
@@ -77,8 +76,7 @@ Run on multiple machines:
     parser.add_argument(
         "--resume",
         action="store_true",
-        help="Whether to attempt to resume from the checkpoint directory. "
-        "See documentation of `DefaultTrainer.resume_or_load()` for what it means.",
+        help="whether to attempt to resume from the checkpoint directory",
     )
     parser.add_argument("--eval-only", action="store_true", help="perform evaluation only")
     parser.add_argument("--num-gpus", type=int, default=1, help="number of gpus *per machine*")
@@ -99,9 +97,7 @@ Run on multiple machines:
     )
     parser.add_argument(
         "opts",
-        help="Modify config options by adding 'KEY VALUE' pairs at the end of the command. "
-        "See config references at "
-        "https://detectron2.readthedocs.io/modules/config.html#config-references",
+        help="Modify config options using the command-line",
         default=None,
         nargs=argparse.REMAINDER,
     )
@@ -157,6 +153,8 @@ def default_setup(cfg, args):
         torch.backends.cudnn.benchmark = cfg.CUDNN_BENCHMARK
 
 
+    
+    
 class DefaultPredictor:
     """
     Create a simple end-to-end predictor with the given config that runs on
@@ -224,13 +222,16 @@ class DefaultPredictor:
             return predictions
 
 
-class DefaultTrainer(TrainerBase):
+    
+    
+class DefaultTrainer(SimpleTrainer):
     """
-    A trainer with default training logic. It does the following:
+    A trainer with default training logic.
+    It is a subclass of :class:`SimpleTrainer` and instantiates everything needed from the
+    config. It does the following:
 
-    1. Create a :class:`SimpleTrainer` using model, optimizer, dataloader
-       defined by the given config. Create a LR scheduler defined by the config.
-    2. Load the last checkpoint or `cfg.MODEL.WEIGHTS`, if exists, when
+    1. Create model, optimizer, scheduler, dataloader from the given config.
+    2. Load a checkpoint or `cfg.MODEL.WEIGHTS`, if exists, when
        `resume_or_load` is called.
     3. Register a few common hooks defined by the config.
 
@@ -272,12 +273,10 @@ class DefaultTrainer(TrainerBase):
         Args:
             cfg (CfgNode):
         """
-        super().__init__()
         logger = logging.getLogger("detectron2")
         if not logger.isEnabledFor(logging.INFO):  # setup_logger is not called for d2
             setup_logger()
         cfg = DefaultTrainer.auto_scale_workers(cfg, comm.get_world_size())
-
         # Assume these objects must be constructed in this order.
         model = self.build_model(cfg)
         optimizer = self.build_optimizer(cfg, model)
@@ -288,7 +287,7 @@ class DefaultTrainer(TrainerBase):
             model = DistributedDataParallel(
                 model, device_ids=[comm.get_local_rank()], broadcast_buffers=False
             )
-        self._trainer = SimpleTrainer(model, data_loader, optimizer)
+        super().__init__(model, data_loader, optimizer)
 
         self.scheduler = self.build_lr_scheduler(cfg, optimizer)
         # Assume no other objects need to be checkpointed.
@@ -308,14 +307,12 @@ class DefaultTrainer(TrainerBase):
 
     def resume_or_load(self, resume=True):
         """
-        If `resume==True` and `cfg.OUTPUT_DIR` contains the last checkpoint (defined by
-        a `last_checkpoint` file), resume from the file. Resuming means loading all
-        available states (eg. optimizer and scheduler) and update iteration counter
-        from the checkpoint. ``cfg.MODEL.WEIGHTS`` will not be used.
+        If `resume==True`, and last checkpoint exists, resume from it, load all checkpointables
+        (eg. optimizer and scheduler) and update iteration counter from it. ``cfg.MODEL.WEIGHTS``
+        will not be used.
 
-        Otherwise, this is considered as an independent training. The method will load model
-        weights from the file `cfg.MODEL.WEIGHTS` (but will not load other states) and start
-        from iteration 0.
+        Otherwise, load the model specified by the config (skip all checkpointables) and start from
+        the first iteration.
 
         Args:
             resume (bool): whether to do resume or not
@@ -366,7 +363,7 @@ class DefaultTrainer(TrainerBase):
 
         # Do evaluation after checkpointer, because then if it fails,
         # we can use the saved checkpoint to debug.
-        ret.append(hooks.EvalHook(cfg.TEST.EVAL_PERIOD, test_and_save_results))
+        #ret.append(hooks.EvalHook(cfg.TEST.EVAL_PERIOD, test_and_save_results))
 
         if comm.is_main_process():
             # run writers in the end, so that evaluation metrics are written
@@ -415,10 +412,6 @@ class DefaultTrainer(TrainerBase):
             ), "No evaluation results obtained during training!"
             verify_results(self.cfg, self._last_eval_results)
             return self._last_eval_results
-
-    def run_step(self):
-        self._trainer.iter = self.iter
-        self._trainer.run_step()
 
     @classmethod
     def build_model(cls, cfg):
@@ -615,7 +608,33 @@ Alternatively, you can call evaluation functions yourself (see Colab balloon tut
             cfg.freeze()
         return cfg
 
+    
+## custom ---------------
+from .hooks import LossEvalHook
+from detectron2.data.dataset_mapper import DatasetMapper
+from detectron2.evaluation import COCOEvaluator
 
-# Access basic attributes from the underlying trainer
-for _attr in ["model", "data_loader", "optimizer"]:
-    setattr(DefaultTrainer, _attr, property(lambda self, x=_attr: getattr(self._trainer, x)))
+class FashionTrainer(DefaultTrainer):
+    def __init__(self, cfg):
+        super().__init__(cfg)
+        
+    @classmethod
+    def build_evaluator(cls, cfg, dataset_name, output_folder=None):
+        if output_folder is None:
+            output_folder = os.path.join(cfg.OUTPUT_DIR, "inference")
+
+        return COCOEvaluator(dataset_name, cfg, True, output_folder)
+    
+    def build_hooks(self):
+        hooks = super().build_hooks()
+        hooks.insert(-1,LossEvalHook(
+            self.cfg.TEST.EVAL_PERIOD,
+            self.model,
+            build_detection_val_loader(self.cfg ,
+                                       self.cfg.DATASETS.TEST[0],
+                                       DatasetMapper(self.cfg,True) # label 필요
+                                       )
+        ))
+        return hooks
+
+#--------------------
