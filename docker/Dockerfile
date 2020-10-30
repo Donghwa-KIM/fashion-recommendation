@@ -26,8 +26,9 @@ RUN pip install --user torch==1.6 torchvision==0.7 -f https://download.pytorch.o
 
 RUN pip install --user 'git+https://github.com/facebookresearch/fvcore'
 # install detectron2
-RUN git clone https://github.com/Donghwa-KIM/detectron2 detectron2_repo
-#RUN git clone https://github.com/Donghwa-KIM/fashion-recommendation fashion_repo
+# modifted about validation loss, hook function, optimizer, scheduling 
+RUN https://github.com/Donghwa-KIM/fashion-recommendation.git fashion_repo
+
 
 # set FORCE_CUDA because during `docker build` cuda is not accessible
 ENV FORCE_CUDA="1"
@@ -36,11 +37,11 @@ ENV FORCE_CUDA="1"
 ARG TORCH_CUDA_ARCH_LIST="Kepler;Kepler+Tesla;Maxwell;Maxwell+Tegra;Pascal;Volta;Turing"
 ENV TORCH_CUDA_ARCH_LIST="${TORCH_CUDA_ARCH_LIST}"
 
-RUN pip install --user -e detectron2_repo
+RUN pip install --user -e fashion_repo
 
 
 #RUN git clone https://github.com/Donghwa-KIM/fashion-recommendation.git fashion_repo
-# modifted about validation loss, hook function, optimizer, scheduling 
+
 RUN pip install --upgrade pip
 RUN pip install jupyterlab
 RUN jupyter notebook --generate-config
