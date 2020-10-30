@@ -1,8 +1,3 @@
-# output dir
-output
-instant_test_output
-inference_test_output
-
 
 *.png
 *.json
@@ -21,7 +16,7 @@ dist/
 wheels/
 
 */.ipynb_checkpoints/*
-
+*.ipynb_checkpoints
 # pytorch/python/numpy formats
 *.pth
 *.pkl
@@ -42,8 +37,11 @@ wheels/
 .vscode
 
 # project dirs
-/detectron2/model_zoo/configs
-/datasets/*
-!/datasets/*.*
-/projects/*/datasets
-/models
+detectron2/model_zoo/configs
+detectron2/_C.cpython-36m-x86_64-linux-gnu.so
+
+
+
+# output
+dataset/*
+build/*
