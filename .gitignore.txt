@@ -10,7 +10,6 @@ inference_test_output
 
 # compilation and distribution
 *__pycache__
-*/__pycahce__/*
 _ext
 *.pyc
 *.pyd
@@ -27,7 +26,7 @@ wheels/
 
 # ipython/jupyter notebooks
 *.ipynb
-*/.ipynb_checkpoints/*
+*ipynb_checkpoints
 
 # Editor temporaries
 *.swn
