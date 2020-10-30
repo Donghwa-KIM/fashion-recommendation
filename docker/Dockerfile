@@ -26,7 +26,9 @@ RUN pip install --user torch==1.6 torchvision==0.7 -f https://download.pytorch.o
 
 RUN pip install --user 'git+https://github.com/facebookresearch/fvcore'
 # install detectron2
-RUN git clone https://github.com/facebookresearch/detectron2 detectron2_repo
+RUN git clone https://github.com/Donghwa-KIM/detectron2 detectron2_repo
+#RUN git clone https://github.com/Donghwa-KIM/fashion-recommendation fashion_repo
+
 # set FORCE_CUDA because during `docker build` cuda is not accessible
 ENV FORCE_CUDA="1"
 # This will by default build detectron2 for all common cuda architectures and take a lot more time,
@@ -36,13 +38,20 @@ ENV TORCH_CUDA_ARCH_LIST="${TORCH_CUDA_ARCH_LIST}"
 
 RUN pip install --user -e detectron2_repo
 
+
+#RUN git clone https://github.com/Donghwa-KIM/fashion-recommendation.git fashion_repo
+# modifted about validation loss, hook function, optimizer, scheduling 
+RUN pip install --upgrade pip
+RUN pip install jupyterlab
+RUN jupyter notebook --generate-config
+RUN sudo apt-get update
+RUN sudo apt-get install unzip 
+RUN pip install sklearn vim tqdm
+RUN pip install opencv-python
+
+
+
+
 # Set a fixed model cache directory.
 ENV FVCORE_CACHE="/tmp"
-WORKDIR /home/appuser/detectron2_repo
-
-# run detectron2 under user "appuser":
-# wget http://images.cocodataset.org/val2017/000000439715.jpg -O input.jpg
-# python3 demo/demo.py  \
-	#--config-file configs/COCO-InstanceSegmentation/mask_rcnn_R_50_FPN_3x.yaml \
-	#--input input.jpg --output outputs/ \
-	#--opts MODEL.WEIGHTS detectron2://COCO-InstanceSegmentation/mask_rcnn_R_50_FPN_3x/137849600/model_final_f10217.pkl
+WORKDIR /home/appuser/fashion_repo
