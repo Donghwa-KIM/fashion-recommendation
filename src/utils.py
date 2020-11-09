@@ -127,19 +127,21 @@ class Dataset:
                     px, py  = filter_zero_point(px,py)
                     poly = [(x + 0.5, y + 0.5) for x, y in zip(px, py) ]
                     poly = [p for x in poly for p in x]
+                    
+                    # no label
+                    if len(poly) % 2 == 0 and len(poly) >= 6:                        
+                        if self.name == 'Deepfashion':
+                            # label started from 1
+                            anno['category_id']= anno['category_id']-1
 
-                    if self.name == 'Deepfashion':
-                        # label started from 1
-                        anno['category_id']= anno['category_id']-1
-                        
-                    obj = {
-                    "bbox": [np.min(px), np.min(py), np.max(px), np.max(py)],
-                    "bbox_mode": BoxMode.XYXY_ABS,
-                    "segmentation": [poly],
-                    "category_id": anno['category_id'],
-                    "category_name": anno['category_name']
-                    }                        
-                    objs.append(obj)
+                        obj = {
+                        "bbox": [np.min(px), np.min(py), np.max(px), np.max(py)],
+                        "bbox_mode": BoxMode.XYXY_ABS,
+                        "segmentation": [poly],
+                        "category_id": anno['category_id'],
+                        "category_name": anno['category_name']
+                        }                        
+                        objs.append(obj)
                 record["annotations"] = objs        
 
                 dataset_dicts.append(record)
@@ -148,3 +150,19 @@ class Dataset:
 #                     break
 
         return dataset_dicts
+
+
+def load_json_arr(json_path):
+    lines = []
+    with open(json_path, 'r') as f:
+        for line in f:
+            lines.append(json.loads(line))
+    return lines
+
+def get_best_checkpoint(experiment_folder):
+    experiment_metrics = load_json_arr(experiment_folder + '/metrics.json')
+
+    val_iter = [x['iteration'] for x in experiment_metrics if 'validation_loss' in x] 
+    val_loss = [x['validation_loss'] for x in experiment_metrics if 'validation_loss' in x]
+    model_idx = val_iter[np.argmin(val_loss)]
+    return str(val_iter[np.argmin(val_loss)]).zfill(5)

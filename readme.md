@@ -32,8 +32,14 @@ docker exec -it fashion bash
 
 # Segmentation Task
 
-- Training maskrcnn for DeepfashionV2
+- Training mask rcnn for DeepfashionV2
 
 ```shell
 sh script/run_seg_deepfahsion_maskrcnn.sh 
+```
+
+- Training Cascade mask rcnn for DeepfashionV2
+
+```shell
+sh script/run_seg_deepfahsion_cascade.sh 
 ```

@@ -47,7 +47,7 @@ RUN pip install --upgrade pip
 RUN pip install jupyterlab
 RUN jupyter notebook --generate-config
 RUN sudo apt-get update
-RUN sudo apt-get install unzip 
+RUN sudo apt-get install zip 
 RUN pip install sklearn vim tqdm
 RUN pip install opencv-python
 
