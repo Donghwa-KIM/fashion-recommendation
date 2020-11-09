@@ -35,12 +35,12 @@ docker exec -it fashion bash
 - Kfashion
     - https://drive.google.com/file/d/1Dz4k_MesgG2Uqno-LzrS7ebPqKG8p0XZ/view?usp=sharing
 
-![](http://drive.google.com/uc?export=view&id=1D4YgJw9-IsN2VTDKUdeBn0FMIeBtmYJ8)
+![](figure/dist.png)
 
 # Segmentation Task
 - Cascade mask rcnn
 
-<img src="http://drive.google.com/uc?export=view&id=1gDc3edWBcKZr2tsMhuJTu0GoVPuI9W2s" width="700">
+<img src=figure/cascasde.png width="700">
 
 
 - Train/Test Cascade mask rcnn fine-tuning on *DeepfashionV2*
@@ -61,7 +61,7 @@ sh script/run_seg_deepfahsion_cascade.sh
 
 - Output
 
-<img src="http://drive.google.com/uc?export=view&id=1BhHko1U4xcTCg-yLQmR-mrm2-4QFDJzQ" width="700">
+<img src=figure/mask_out.png width="700">
 
 # Performance
 
@@ -119,7 +119,7 @@ sh script/run_seg_deepfahsion_cascade.sh
 
 # Recommendation Task
 
-<img src="http://drive.google.com/uc?export=view&id=1AlMMbejlJKZM0L1ynpIUo_zL9DfeV6mp" width="700">
+<img src=figure/cgd.png width="700">
 
 
 - Train/Test combined global descriptors on *Kfashion* using *Cascade mask rcnn*
@@ -149,6 +149,6 @@ sh script/run_seg_image.sh
 
 - Output
 
-<img src="http://drive.google.com/uc?export=view&id=1fFy6E5G9zFRj48RtF5CjZQ4-3iW567v4" width="700">
+<img src=figure/seg_eg.png width="700">
 
 
