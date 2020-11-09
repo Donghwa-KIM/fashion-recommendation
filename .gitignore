@@ -37,10 +37,13 @@ wheels/
 .vscode
 
 # project dirs
-.detectron2/model_zoo/configs
-.detectron2/_C.cpython-36m-x86_64-linux-gnu.so
+detectron2/model_zoo/configs
+detectron2/_C.cpython-36m-x86_64-linux-gnu.so
 
 
 
 # output
-.dataset/*
+dataset/*
+model/*
+results/*
+build/*
