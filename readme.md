@@ -32,14 +32,39 @@ docker exec -it fashion bash
 
 # Segmentation Task
 
-- Training mask rcnn for DeepfashionV2
-
-```shell
-sh script/run_seg_deepfahsion_maskrcnn.sh 
-```
-
-- Training Cascade mask rcnn for DeepfashionV2
+- Train/Test Cascade mask rcnn on *DeepfashionV2*
 
 ```shell
 sh script/run_seg_deepfahsion_cascade.sh 
 ```
+
+- Train/Test Cascade mask rcnn on *Kfashion*
+
+```shell
+sh script/run_seg_deepfahsion_cascade.sh 
+```
+
+# Recommendation Task
+
+
+- Train/Test combined global descriptors on *Kfashion*
+
+```shell
+sh script/run_cgd_extraction.sh 
+```
+
+
+
+---
+
+# Extract segmented DB Image
+
+
+- segmented images for *Kfashion*, extracted by *Cascade mask rcnn*
+
+```shell
+sh script/run_seg_image.sh 
+```
+
+
+
