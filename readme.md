@@ -43,7 +43,7 @@ docker exec -it fashion bash
 <img src="http://drive.google.com/uc?export=view&id=1gDc3edWBcKZr2tsMhuJTu0GoVPuI9W2s" width="700">
 
 
-- Train/Test Cascade mask rcnn on *DeepfashionV2*
+- Train/Test Cascade mask rcnn fine-tuning on *DeepfashionV2*
     - completed model: [Deepfashion_cascade_mask_rcnn](http://drive.google.com/uc?export=view&id=1D4YgJw9-IsN2VTDKUdeBn0FMIeBtmYJ8)
     - its results: [Deepfashion_cascade_mask_rcnn](https://drive.google.com/file/d/1FSnYl10_I2A-dhpu75YSOJVG6lAYFXLJ/view?usp=sharing)
 
@@ -51,7 +51,7 @@ docker exec -it fashion bash
 sh script/run_seg_deepfahsion_cascade.sh 
 ```
 
-- Train/Test Cascade mask rcnn on *Kfashion*
+- Train/Test Cascade mask rcnn further fine-tuning on *Kfashion*
     - completed model: [kfashion_cascade_mask_rcnn](https://drive.google.com/file/d/1h_BIcdZUl98zghhcmtRntdGHISp_GH5g/view?usp=sharing)
     - its results: [kfashion_cascade_mask_rcnn](https://drive.google.com/file/d/1kqwq6PFUT3cvV7wUfqNhVbwLK-w9y-NW/view?usp=sharing)
 
@@ -122,7 +122,7 @@ sh script/run_seg_deepfahsion_cascade.sh
 <img src="http://drive.google.com/uc?export=view&id=1AlMMbejlJKZM0L1ynpIUo_zL9DfeV6mp" width="700">
 
 
-- Train/Test combined global descriptors on *Kfashion*
+- Train/Test combined global descriptors on *Kfashion* using *Cascade mask rcnn*
     - completed model: [cgd_model.pt](https://drive.google.com/file/d/1h_BIcdZUl98zghhcmtRntdGHISp_GH5g/view?usp=sharing)
     - its results: [feature_extraction](https://drive.google.com/file/d/1OOjOxvDOVQa8mAQnLN0D6wRkcf-yU2Fi/view?usp=sharing)
 
