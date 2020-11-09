@@ -135,16 +135,19 @@ sh script/run_cgd_extraction.sh
 - Get items by using cosine similarities, and evaluation  
 
     - CGD evaluation
+    
 
     |      k    |     Recall@k    |     Hit@k    |     MRR@k    |
     |:---------:|:---------------:|:------------:|:------------:|
     |      1    |       12.84     |     57.76    |     57.76    |
     |      2    |       18.33     |     63.95    |      686     |
-    |      5    |       27.93     |      799     |     62.82    |
+    |      5    |       27.93     |      79.9     |     62.82    |
     |     10    |       34.77     |     77.23    |     63.55    |
     |     20    |       41.61     |     81.57    |     63.85    |
 
+    
     - CGD + *whitened PCA* evaluation
+    
 
     |      k    |     Recall@k    |     Hit@k    |     MRR@k    |
     |:---------:|:---------------:|:------------:|:------------:|
