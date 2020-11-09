@@ -57,7 +57,7 @@ sh script/run_cgd_extraction.sh
 
 ---
 
-# Extract segmented DB Image
+# Extract Segmented Image for DB
 
 
 - segmented images for *Kfashion*, extracted by *Cascade mask rcnn*
