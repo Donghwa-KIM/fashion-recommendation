@@ -49,7 +49,7 @@ RUN jupyter notebook --generate-config
 RUN sudo apt-get update
 RUN pip install sklearn vim tqdm
 RUN pip install opencv-python
-
+RUN pip install shapely
 
 
 
