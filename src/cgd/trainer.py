@@ -71,7 +71,7 @@ class Trainer:
             
             if (i+1) % 20 ==0:
 
-                logging.info('Train Iter {}/{} - Loss:{:.4f} - cls loss:{:.4f} - triple loss:{:.4f} - Acc:{:.2f}% - p1: {:.6f} - p2: {:.6f} - p3: {:6}'
+                logging.info('Train Iter {}/{} - Loss:{:.4f} - cls loss:{:.4f} - triple loss:{:.4f} - Acc:{:.2f}'
                                              .format(i, 
                                                      max_iters,
                                                      loss_c/ total_num,

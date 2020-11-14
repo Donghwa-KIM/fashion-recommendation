@@ -18,12 +18,12 @@ CUDA_VISIBLE_DEVICES=${GPU_NUM} python src/extractor.py \
     --model_path ${MODEL_PATH} \
     --config_path ${CONFIG_PATH} \
 
-# evaluate
-CUDA_VISIBLE_DEVICES=${GPU_NUM} python src/extractor.py \
-    --do_eval \
-    --data_name ${DATA_NAME} \
-    --model_name ${MODEL_NAME} \
-    --input_path ${INPUT_PATH} \
-    --output_path ${OUTPUT_PATH} \
-    --model_path ${MODEL_PATH} \
-    --config_path ${CONFIG_PATH}
+# # evaluate
+# CUDA_VISIBLE_DEVICES=${GPU_NUM} python src/extractor.py \
+#     --do_eval \
+#     --data_name ${DATA_NAME} \
+#     --model_name ${MODEL_NAME} \
+#     --input_path ${INPUT_PATH} \
+#     --output_path ${OUTPUT_PATH} \
+#     --model_path ${MODEL_PATH} \
+#     --config_path ${CONFIG_PATH}
