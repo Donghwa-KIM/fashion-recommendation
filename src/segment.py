@@ -40,8 +40,14 @@ def train(args):
     cfg.DATASETS.TEST = (f"{args.data_name}_val",) # we modfiy in hooks.py, defaults.py, so it works
     cfg.TEST.EVAL_PERIOD = configs['Detectron2']['EVAL_PERIOD'] # compute validation loss
     cfg.DATALOADER.NUM_WORKERS = configs['Detectron2']['DATALOADER_NUM_WORKERS'] # cpu
+    
+    cfg.DATALOADER.SAMPLER_TRAIN = configs['Detectron2']['DATALOADER_SAMPLER_TRAIN']
+    cfg.DATALOADER.REPEAT_THRESHOLD = 1.0
+
     cfg.SOLVER.IMS_PER_BATCH = configs['Detectron2']['SOLVER_IMS_PER_BATCH'] # allocation to 9000m
     cfg.SOLVER.BASE_LR = configs['Detectron2']['SOLVER_BASE_LR'] # 0.00025  
+    cfg.SOLVER.STEPS = configs['Detectron2']['SOLVER_STEPS']     
+
     cfg.SOLVER.CHECKPOINT_PERIOD = configs['Detectron2']['SOLVER_CHECKPOINT_PERIOD'] # saved model
     cfg.SOLVER.MAX_ITER = configs['Detectron2']['SOLVER_MAX_ITER']   #20000  
     cfg.MODEL.ROI_HEADS.BATCH_SIZE_PER_IMAGE = configs['Detectron2']['MODEL_ROI_HEADS_BATCH_SIZE_PER_IMAGE']  # number of items in batch update
