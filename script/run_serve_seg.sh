@@ -1,3 +1,3 @@
 
 
-python src/serve_seg.py --image_path sample_images/056665.jpg
+python src/serve_seg.py --image_path ./dataset/samples/056665.jpg --save_path ./dataset/seg_images

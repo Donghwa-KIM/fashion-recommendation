@@ -91,8 +91,8 @@ def plot(args, fashion_metadata, im, outputs, labels):
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("--image_path", type=str, default="./sample_images/056665.jpg", help='input image')
-    parser.add_argument("--save_path", type=str, default="./seg_images", help='save root')
+    parser.add_argument("--image_path", type=str, default="./dataset/samples/056665.jpg", help='input image')
+    parser.add_argument("--save_path", type=str, default="./dataset/seg_images", help='save root')
     parser.add_argument("--model_weights", type=str, default="./model/kfashion_cascade_mask_rcnn", help='model checkpoints')
     parser.add_argument("--model_path", type=str, default="Misc/cascade_mask_rcnn_R_101_FPN_3x.yaml", 
                         help='--pretrained COCO dataset for semgentation task')
