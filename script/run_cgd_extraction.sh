@@ -4,7 +4,7 @@ DATA_NAME="kfashion"
 MODEL_NAME="cascade_mask_rcnn"
 INPUT_PATH="./dataset/kfashion_dataset_new"
 OUTPUT_PATH="./model"
-MODEL_PATH="Misc/cascade_mask_rcnn_R_50_FPN_3x.yaml"
+MODEL_PATH="Misc/cascade_mask_rcnn_R_101_FPN_3x.yaml"
 CONFIG_PATH="./src/configs.yaml"
 
     
