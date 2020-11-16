@@ -135,8 +135,8 @@ if __name__ == "__main__":
             for mask, label in zip(masks, labels):
 
                 im = cv2.imread(d["file_name"])
-                save_path = os.path.join(args.input_path, 
-                                         'seg',
+                save_path = os.path.join('dataset', 
+                                         'segDB',
                                          os.path.basename(d["file_name"]).split('.')[0])
 
                 os.makedirs(save_path, exist_ok =True)
