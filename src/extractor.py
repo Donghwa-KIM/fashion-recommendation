@@ -155,13 +155,13 @@ def evaluate(args):
     total_dict = get_features(val_loader, roi_pooler, model, configs, 'val', total_dict)
     total_dict = get_features(test_loader, roi_pooler, model, configs, 'test', total_dict)
     
-    os.makedirs('./results/feature_extraction', exist_ok=True)
+    os.makedirs('./dataset/feature_extraction', exist_ok=True)
 
-    with open(f'./results/feature_extraction/cgd.pkl', 'wb') as f:
+    with open(f'./dataset/feature_extraction/cgd.pkl', 'wb') as f:
         pickle.dump( total_dict,f)
 
     pca_dict = get_pca(total_dict)
-    with open(f'./results/feature_extraction/cgd_pca.pkl', 'wb') as f:
+    with open(f'./dataset/feature_extraction/cgd_pca.pkl', 'wb') as f:
         pickle.dump(pca_dict,f )
         
         
