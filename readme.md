@@ -66,6 +66,7 @@ sh script/run_seg_deepfahsion_cascade.sh
 # Performance for Deepfashion-v2
 
 - Distribution of instances among all 13 categories for training :
+
 |   category    | #instances   |   category    | #instances   |   category    | #instances   |
 |:-------------:|:-------------|:-------------:|:-------------|:-------------:|:-------------|
 | short sleev.. | 71645        | long sleeve.. | 36064        | short sleev.. | 543          |
@@ -79,6 +80,7 @@ sh script/run_seg_deepfahsion_cascade.sh
 
 
 - Evaluation results for bbox:
+
 |   AP   |  AP50  |  AP75  |  APs  |  APm   |  APl   |
 | :----: | :----: | :----: | :---: | :----: | :----: |
 | 55.866 | 67.401 | 62.356 | 0.228 | 31.682 | 57.903 |
@@ -108,7 +110,7 @@ sh script/run_seg_deepfahsion_cascade.sh
 | shorts              | 64.316 | trousers          | 59.996 | skirt                | 71.021 |
 | short sleeve dress  | 64.007 | long sleeve dress | 42.682 | vest dress           | 62.124 |
 | sling dress         | 54.019 |                   |        |                      |        |
-# Performance for $k$-fashion
+# Performance for Kfashion
 
 - Distribution of instances among all 21 categories for training :
 
