@@ -63,9 +63,54 @@ sh script/run_seg_deepfahsion_cascade.sh
 
 <img src=figure/mask_out.png width="700">
 
-# Performance
+# Performance for Deepfashion-v2
 
-- Distribution of instances among all 21 categories:
+- Distribution of instances among all 13 categories for training :
+|   category    | #instances   |   category    | #instances   |   category    | #instances   |
+|:-------------:|:-------------|:-------------:|:-------------|:-------------:|:-------------|
+| short sleev.. | 71645        | long sleeve.. | 36064        | short sleev.. | 543          |
+| long sleeve.. | 13457        |     vest      | 16095        |     sling     | 1985         |
+|    shorts     | 36616        |   trousers    | 55387        |     skirt     | 30835        |
+| short sleev.. | 17211        | long sleeve.. | 7907         |  vest dress   | 17949        |
+|  sling dress  | 6492         |               |              |               |              |
+|     total     | 312186       |               |              |               |              |
+
+
+
+
+- Evaluation results for bbox:
+|   AP   |  AP50  |  AP75  |  APs  |  APm   |  APl   |
+| :----: | :----: | :----: | :---: | :----: | :----: |
+| 55.866 | 67.401 | 62.356 | 0.228 | 31.682 | 57.903 |
+
+- Per-category bbox AP:
+
+| category            | AP     | category          | AP     | category             | AP     |
+| :------------------ | :----- | :---------------- | :----- | :------------------- | :----- |
+| short sleeve top    | 84.388 | long sleeve top   | 64.570 | short sleeve outwear | 7.145  |
+| long sleeve outwear | 22.648 | vest              | 64.892 | sling                | 41.982 |
+| shorts              | 68.366 | trousers          | 67.217 | skirt                | 72.668 |
+| short sleeve dress  | 67.721 | long sleeve dress | 45.859 | vest dress           | 66.793 |
+| sling dress         | 52.014 |                   |        |                      |        |
+
+- Evaluation results for segm:
+
+|   AP   |  AP50  |  AP75  |  APs  |  APm   |  APl   |
+| :----: | :----: | :----: | :---: | :----: | :----: |
+| 52.244 | 66.834 | 61.169 | 0.000 | 22.458 | 54.445 |
+
+- Per-category segm AP:
+
+| category            | AP     | category          | AP     | category             | AP     |
+| :------------------ | :----- | :---------------- | :----- | :------------------- | :----- |
+| short sleeve top    | 79.983 | long sleeve top   | 58.647 | short sleeve outwear | 5.507  |
+| long sleeve outwear | 18.926 | vest              | 61.006 | sling                | 36.943 |
+| shorts              | 64.316 | trousers          | 59.996 | skirt                | 71.021 |
+| short sleeve dress  | 64.007 | long sleeve dress | 42.682 | vest dress           | 62.124 |
+| sling dress         | 54.019 |                   |        |                      |        |
+# Performance for $k$-fashion
+
+- Distribution of instances among all 21 categories for training :
 
 |   category    | #instances | category | #instances | category | #instances |
 | :-----------: | :--------- | :------: | :--------- | :------: | :--------- |
@@ -83,19 +128,19 @@ sh script/run_seg_deepfahsion_cascade.sh
 
 |   AP   |  AP50  |  AP75  |  APs   |  APm   |  APl   |
 | :----: | :----: | :----: | :----: | :----: | :----: |
-| 48.194 | 60.508 | 53.806 | 45.000 | 57.415 | 48.119 |
+| 59.341 | 72.345 | 66.059 | 50.000 | 56.079 | 59.267 |
 
 - Per-category bbox AP:
 
 | category      | AP     | category | AP     | category | AP     |
 | :------------ | :----- | :------- | :----- | :------- | :----- |
-| cardigan      | 37.397 | knitwear | 66.892 | dress    | 83.845 |
-| leggings      | 19.579 | vest     | 48.953 | bratop   | 0.000  |
-| blouse        | 68.244 | shirts   | 43.211 | skirt    | 72.168 |
-| jacket        | 43.539 | jumper   | 45.737 | jumpsuit | 41.825 |
-| jogger pants  | 20.207 | zipup    | 5.803  | jean     | 71.190 |
-| coat          | 67.621 | top      | 29.423 | t-shirts | 65.624 |
-| padded jacket | 73.085 | pants    | 63.442 | hoody    | 44.280 |
+| cardigan      | 51.548 | knitwear | 69.198 | dress    | 83.673 |
+| leggings      | 41.134 | vest     | 56.446 | bratop   | 48.868 |
+| blouse        | 68.417 | shirts   | 45.178 | skirt    | 72.048 |
+| jacket        | 58.181 | jumper   | 54.128 | jumpsuit | 56.432 |
+| jogger pants  | 44.613 | zipup    | 34.958 | jean     | 70.600 |
+| coat          | 78.221 | top      | 32.488 | t-shirts | 65.541 |
+| padded jacket | 83.620 | pants    | 64.075 | hoody    | 66.799 |
 
 
 
@@ -103,19 +148,20 @@ sh script/run_seg_deepfahsion_cascade.sh
 
 |   AP   |  AP50  |  AP75  |  APs   |  APm   |  APl   |
 | :----: | :----: | :----: | :----: | :----: | :----: |
-| 42.243 | 59.154 | 48.035 | 30.000 | 39.219 | 42.198 |
+| 51.726 | 71.804 | 58.591 | 30.000 | 44.805 | 51.682 |
 
 - Per-category segm AP:
 
 | category      | AP     | category | AP     | category | AP     |
 | :------------ | :----- | :------- | :----- | :------- | :----- |
-| cardigan      | 25.927 | knitwear | 63.572 | dress    | 78.047 |
-| leggings      | 9.894  | vest     | 36.384 | bratop   | 0.000  |
-| blouse        | 62.206 | shirts   | 40.120 | skirt    | 71.696 |
-| jacket        | 33.228 | jumper   | 36.688 | jumpsuit | 34.431 |
-| jogger pants  | 17.901 | zipup    | 4.554  | jean     | 61.952 |
-| coat          | 61.531 | top      | 26.688 | t-shirts | 59.336 |
-| padded jacket | 68.655 | pants    | 54.951 | hoody    | 39.343 |
+| cardigan      | 37.292 | knitwear | 65.304 | dress    | 77.239 |
+| leggings      | 26.938 | vest     | 42.535 | bratop   | 46.223 |
+| blouse        | 61.723 | shirts   | 41.485 | skirt    | 71.209 |
+| jacket        | 45.287 | jumper   | 44.823 | jumpsuit | 47.319 |
+| jogger pants  | 40.278 | zipup    | 29.540 | jean     | 61.408 |
+| coat          | 69.032 | top      | 29.066 | t-shirts | 58.393 |
+| padded jacket | 74.742 | pants    | 55.881 | hoody    | 60.534 |
+
 
 # Recommendation Task
 
