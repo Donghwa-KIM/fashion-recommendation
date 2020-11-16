@@ -4,9 +4,9 @@ DATA_NAME="Deepfashion"
 MODEL_NAME="cascade_mask_rcnn"
 INPUT_PATH="./dataset/Deepfashion_dataset"
 OUTPUT_PATH="./model"
-MODEL_PATH="Misc/cascade_mask_rcnn_R_50_FPN_3x.yaml"
+MODEL_PATH="Misc/cascade_mask_rcnn_R_101_FPN_3x.yaml"
 CONFIG_PATH="./src/configs.yaml"
-PRETRAINED_PATH="Misc/cascade_mask_rcnn_R_50_FPN_3x.yaml"
+PRETRAINED_PATH="COCO-InstanceSegmentation/mask_rcnn_R_101_FPN_3x.yaml"
 
     
 
@@ -31,3 +31,7 @@ CUDA_VISIBLE_DEVICES=${GPU_NUM} python src/segment.py \
     --output_path ${OUTPUT_PATH} \
     --model_path ${MODEL_PATH} \
     --config_path ${CONFIG_PATH}
+    
+    
+    
+

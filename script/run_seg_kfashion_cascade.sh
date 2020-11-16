@@ -4,7 +4,7 @@ DATA_NAME="kfashion"
 MODEL_NAME="cascade_mask_rcnn"
 INPUT_PATH="./dataset/kfashion_dataset_new"
 OUTPUT_PATH="./model"
-MODEL_PATH="Misc/cascade_mask_rcnn_R_50_FPN_3x.yaml"
+MODEL_PATH="Misc/cascade_mask_rcnn_R_101_FPN_3x.yaml"
 CONFIG_PATH="./src/configs.yaml"
 
     
@@ -28,3 +28,6 @@ CUDA_VISIBLE_DEVICES=${GPU_NUM} python src/segment.py \
     --output_path ${OUTPUT_PATH} \
     --model_path ${MODEL_PATH} \
     --config_path ${CONFIG_PATH}
+    
+    
+    

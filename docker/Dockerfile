@@ -52,7 +52,6 @@ RUN pip install opencv-python
 
 
 
-
 # Set a fixed model cache directory.
 ENV FVCORE_CACHE="/tmp"
 WORKDIR /home/appuser/fashion_repo
