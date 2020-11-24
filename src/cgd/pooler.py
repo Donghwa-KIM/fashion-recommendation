@@ -25,7 +25,10 @@ class ROIpool:
 
         box_feature = self.get_box_feature(feature_lists,boxes)
         if sum(proposals_per_batch)==0: 
-            return  None, None, None, True
+            if 'pair_id' in batched_inputs:
+                return  None, None, None, True
+            else:
+                return None, None, True
 
         # cgd target
         # pair id started from 1

@@ -3,6 +3,7 @@ import yaml
 import os
 import logging
 import matplotlib.pyplot as plt
+import pytz
 
 from detectron2.data import MetadataCatalog, DatasetCatalog
 from detectron2.config import get_cfg
@@ -12,7 +13,8 @@ from detectron2.evaluation import COCOEvaluator, inference_on_dataset
 from detectron2.data import build_detection_test_loader
 from detectron2.utils.visualizer import Visualizer
 from detectron2.utils.visualizer import ColorMode
-
+from time import gmtime, strftime
+from datetime import datetime
 from utils import *
 
 import warnings
@@ -73,6 +75,22 @@ def get_predictor(args, configs):
     
     return predictor
 
+<<<<<<< Updated upstream
+=======
+def save_json(path, code, body):
+    tz_kor = pytz.timezone('Asia/Seoul') 
+    json_dict = {}
+    
+    json_dict["resultCode"] = code
+    json_dict["resultMessage"] = "SUCCESS" 
+    json_dict["body"] = body
+    json_dict["responseDate"] = datetime.now(tz_kor).strftime('%Y-%m-%d %H:%M:%S')
+
+    with open(path, "w") as f:
+        json.dump(json_dict, f)
+
+        
+>>>>>>> Stashed changes
 def plot(args, fashion_metadata, im, outputs, labels):
     plt.figure(figsize=(7,7))
     v = Visualizer(im[:, :, ::-1],
@@ -84,12 +102,23 @@ def plot(args, fashion_metadata, im, outputs, labels):
 
     cv2_imshow(out.get_image()[:, :, ::-1])
     plt.axis('off')
+<<<<<<< Updated upstream
+=======
+<<<<<<< HEAD
+    plt.savefig(os.path.join(args.save_path,'images', f"{os.path.basename(args.image_path)}"),bbox_inches='tight')
+    logger.info("Saved in {}".format(os.path.join(args.save_path, 'images', f"{os.path.basename(args.image_path)}")))
+=======
+>>>>>>> Stashed changes
     logger.info("Saved in {}".format(os.path.join(args.save_path, f"{os.path.basename(args.image_path)}")))
     # {'_'.join(labels)}_
     plt.savefig(os.path.join(args.save_path, f"{os.path.basename(args.image_path)}"),bbox_inches='tight')
     #{'_'.join(labels)}_
+<<<<<<< Updated upstream
+=======
+>>>>>>> 015d1c4cb9e8da7e164ad69a7ce05c6bb91cead1
+>>>>>>> Stashed changes
     plt.close()
-
+    
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
@@ -104,14 +133,26 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
     
+    
+    # init json
+    
+    
     # model configs
     configs = load_model_configs(args)    
     # categoies info
     fashion_metadata = build_categories(configs)
     # model index
     args.model_idx = get_checkpoint(args)
+<<<<<<< Updated upstream
+=======
+<<<<<<< HEAD
+    
+=======
+>>>>>>> 015d1c4cb9e8da7e164ad69a7ce05c6bb91cead1
+>>>>>>> Stashed changes
     # save path
-    os.makedirs(args.save_path, exist_ok =True)
+    os.makedirs(os.path.join(args.save_path,'images'), exist_ok =True)
+    os.makedirs(os.path.join(args.save_path,'jsons'), exist_ok =True)
 
     # model for semgmentation
     predictor= get_predictor(args, configs)
@@ -128,3 +169,7 @@ if __name__ == "__main__":
 
     # save the segmented image
     plot(args, fashion_metadata, im, outputs, labels)
+
+    # save json
+    json_path = os.path.join(args.save_path, 'jsons', f"{os.path.basename(args.image_path).split('.')[0]}.json")
+    save_json(json_path, "SUCCESS", {"filePath": os.path.join(args.save_path, 'images', f"{os.path.basename(args.image_path)}")})

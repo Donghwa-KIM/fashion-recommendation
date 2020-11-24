@@ -160,10 +160,13 @@ def evaluate(args):
     with open(f'./dataset/feature_extraction/cgd.pkl', 'wb') as f:
         pickle.dump( total_dict,f)
 
-    pca_dict = get_pca(total_dict)
+    pca_dict, pca = get_pca(total_dict)
+    
     with open(f'./dataset/feature_extraction/cgd_pca.pkl', 'wb') as f:
         pickle.dump(pca_dict,f )
         
+    with open(f'./model/pca_model.pkl', 'wb') as f:
+        pickle.dump(pca,f )        
         
         
 def get_pca(total_dict):
@@ -175,7 +178,7 @@ def get_pca(total_dict):
     for v, dict_ in zip(whitened, total_dict):
         dict_['feature'] = v
         pca_dict.append(dict_)
-    return pca_dict
+    return pca_dict, pca
 
 
 def get_features(loader, roi_pooler, model, configs, split, total_dict):
