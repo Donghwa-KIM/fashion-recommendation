@@ -84,9 +84,10 @@ def save_json(path, code, body):
     json_dict["resultMessage"] = "SUCCESS" 
     json_dict["body"] = body
     json_dict["responseDate"] = datetime.now(tz_kor).strftime('%Y-%m-%d %H:%M:%S')
-
+    
     with open(path, "w") as f:
         json.dump(json_dict, f)
+        logger.info("Saved json in {}".format(path))
 
         
 def plot(args, fashion_metadata, im, outputs, labels):
@@ -102,13 +103,7 @@ def plot(args, fashion_metadata, im, outputs, labels):
     plt.axis('off')
 
     plt.savefig(os.path.join(args.save_path,'images', f"{os.path.basename(args.image_path)}"),bbox_inches='tight')
-    logger.info("Saved in {}".format(os.path.join(args.save_path, 'images', f"{os.path.basename(args.image_path)}")))
-
-    logger.info("Saved in {}".format(os.path.join(args.save_path, f"{os.path.basename(args.image_path)}")))
-    # {'_'.join(labels)}_
-    plt.savefig(os.path.join(args.save_path, f"{os.path.basename(args.image_path)}"),bbox_inches='tight')
-    #{'_'.join(labels)}_
-
+    logger.info("Saved image in {}".format(os.path.join(args.save_path, 'images', f"{os.path.basename(args.image_path)}")))
     plt.close()
     
 if __name__ == "__main__":
@@ -124,10 +119,7 @@ if __name__ == "__main__":
 
 
     args = parser.parse_args()
-    
-    
-    # init json
-    
+
     
     # model configs
     configs = load_model_configs(args)    
@@ -158,4 +150,5 @@ if __name__ == "__main__":
 
     # save json
     json_path = os.path.join(args.save_path, 'jsons', f"{os.path.basename(args.image_path).split('.')[0]}.json")
-    save_json(json_path, "SUCCESS", {"filePath": os.path.join(args.save_path, 'images', f"{os.path.basename(args.image_path)}")})
+    img_path = os.path.abspath(os.path.join(args.save_path, 'images', f"{os.path.basename(args.image_path)}"))
+    save_json(json_path, "SUCCESS", {"filePath": img_path})
