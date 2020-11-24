@@ -84,9 +84,10 @@ def plot(args, fashion_metadata, im, outputs, labels):
 
     cv2_imshow(out.get_image()[:, :, ::-1])
     plt.axis('off')
-    logger.info("Saved in {}".format(os.path.join(args.save_path, f"{'_'.join(labels)}_{os.path.basename(args.image_path)}")))
-    
-    plt.savefig(os.path.join(args.save_path, f"{'_'.join(labels)}_{os.path.basename(args.image_path)}"),bbox_inches='tight')
+    logger.info("Saved in {}".format(os.path.join(args.save_path, f"{os.path.basename(args.image_path)}")))
+    # {'_'.join(labels)}_
+    plt.savefig(os.path.join(args.save_path, f"{os.path.basename(args.image_path)}"),bbox_inches='tight')
+    #{'_'.join(labels)}_
     plt.close()
 
 if __name__ == "__main__":
@@ -108,7 +109,7 @@ if __name__ == "__main__":
     # categoies info
     fashion_metadata = build_categories(configs)
     # model index
-    model_idx = get_checkpoint(args)
+    args.model_idx = get_checkpoint(args)
     # save path
     os.makedirs(args.save_path, exist_ok =True)
 
