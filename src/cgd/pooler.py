@@ -29,10 +29,14 @@ class ROIpool:
 
         # cgd target
         # pair id started from 1
-        pair_labels = torch.LongTensor([i for data_dict ,n in zip(batched_inputs, proposals_per_batch) 
+        if 'pair_id' in batched_inputs:
+            pair_labels = torch.LongTensor([i for data_dict ,n in zip(batched_inputs, proposals_per_batch) 
                                         for i in [data_dict['pair_id'] ]* n]).to(box_feature.device)
+            return box_feature, pair_labels, pred_instances, False
+        else:
+            return box_feature, pred_instances, False
 
-        return box_feature, pair_labels, pred_instances, False
+    
         
         
     def get_proposals(self, images, features, gt_instances=None):

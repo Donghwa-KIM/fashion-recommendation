@@ -66,12 +66,13 @@ def get_predictor(args, configs):
     cfg.MODEL.DEVICE = 'cpu'
     cfg.MODEL.ROI_HEADS.BATCH_SIZE_PER_IMAGE = configs['Detectron2']['MODEL_ROI_HEADS_BATCH_SIZE_PER_IMAGE']  # number of items in batch update
     cfg.MODEL.ROI_HEADS.NUM_CLASSES = len(configs['Detectron2']['LABEL_LIST']['kfashion'])  # num classes
-    cfg.MODEL.WEIGHTS = os.path.join(args.model_weights,f"model_{model_idx.zfill(7)}.pth")
+    cfg.MODEL.WEIGHTS = os.path.join(args.model_weights,f"model_{args.model_idx.zfill(7)}.pth")
     cfg.MODEL.ROI_HEADS.SCORE_THRESH_TEST = 0.5   # set a custom testing threshold
 
     predictor = DefaultPredictor(cfg)
     
     return predictor
+
 def plot(args, fashion_metadata, im, outputs, labels):
     plt.figure(figsize=(7,7))
     v = Visualizer(im[:, :, ::-1],
