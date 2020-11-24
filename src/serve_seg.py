@@ -75,8 +75,7 @@ def get_predictor(args, configs):
     
     return predictor
 
-<<<<<<< Updated upstream
-=======
+
 def save_json(path, code, body):
     tz_kor = pytz.timezone('Asia/Seoul') 
     json_dict = {}
@@ -90,7 +89,6 @@ def save_json(path, code, body):
         json.dump(json_dict, f)
 
         
->>>>>>> Stashed changes
 def plot(args, fashion_metadata, im, outputs, labels):
     plt.figure(figsize=(7,7))
     v = Visualizer(im[:, :, ::-1],
@@ -102,21 +100,15 @@ def plot(args, fashion_metadata, im, outputs, labels):
 
     cv2_imshow(out.get_image()[:, :, ::-1])
     plt.axis('off')
-<<<<<<< Updated upstream
-=======
-<<<<<<< HEAD
+
     plt.savefig(os.path.join(args.save_path,'images', f"{os.path.basename(args.image_path)}"),bbox_inches='tight')
     logger.info("Saved in {}".format(os.path.join(args.save_path, 'images', f"{os.path.basename(args.image_path)}")))
-=======
->>>>>>> Stashed changes
+
     logger.info("Saved in {}".format(os.path.join(args.save_path, f"{os.path.basename(args.image_path)}")))
     # {'_'.join(labels)}_
     plt.savefig(os.path.join(args.save_path, f"{os.path.basename(args.image_path)}"),bbox_inches='tight')
     #{'_'.join(labels)}_
-<<<<<<< Updated upstream
-=======
->>>>>>> 015d1c4cb9e8da7e164ad69a7ce05c6bb91cead1
->>>>>>> Stashed changes
+
     plt.close()
     
 if __name__ == "__main__":
@@ -143,13 +135,7 @@ if __name__ == "__main__":
     fashion_metadata = build_categories(configs)
     # model index
     args.model_idx = get_checkpoint(args)
-<<<<<<< Updated upstream
-=======
-<<<<<<< HEAD
-    
-=======
->>>>>>> 015d1c4cb9e8da7e164ad69a7ce05c6bb91cead1
->>>>>>> Stashed changes
+
     # save path
     os.makedirs(os.path.join(args.save_path,'images'), exist_ok =True)
     os.makedirs(os.path.join(args.save_path,'jsons'), exist_ok =True)
