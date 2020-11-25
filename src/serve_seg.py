@@ -187,7 +187,7 @@ if __name__ == "__main__":
     # prediction
     outputs = predictor(im)
     
-    labels = []
+    labels = get_labels(configs, outputs)
     check_num_labels(labels)
 
     logger.info(f"Extracted {len(labels)} items")
