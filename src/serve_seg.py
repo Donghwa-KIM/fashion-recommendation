@@ -149,6 +149,7 @@ if __name__ == "__main__":
     plot(args, fashion_metadata, im, outputs, labels)
 
     # save json
+    server_root = os.path.join("/home/korea/fashion-recommendation/","/".join(args.save_path.split('/')[1:]))
     json_path = os.path.join(args.save_path, 'jsons', f"{os.path.basename(args.image_path).split('.')[0]}.json")
-    img_path = os.path.abspath(os.path.join(args.save_path, 'images', f"{os.path.basename(args.image_path)}"))
+    img_path = os.path.abspath(os.path.join(server_root, 'images', f"{os.path.basename(args.image_path)}"))
     save_json(json_path, "SUCCESS", {"filePath": img_path})
