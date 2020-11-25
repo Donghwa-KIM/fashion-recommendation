@@ -186,7 +186,7 @@ def get_features(loader, roi_pooler, model, configs, split, total_dict):
     
     for batched_inputs in tqdm(loader):
         with torch.no_grad():
-            features, pair_labels, pred_ins, is_empty = roi_pooler.batches(batched_inputs)
+            features, pair_labels, pred_ins, is_empty = roi_pooler.batches(batched_inputs, True)
             if is_empty:
                 continue
             cgd, _ = model(features)

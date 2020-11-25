@@ -8,7 +8,7 @@ class ROIpool:
         self.roi_heads_module = self.detectron.roi_heads
         
         
-    def batches(self,batched_inputs):
+    def batches(self,batched_inputs, is_training = False):
 
         if self.detectron.training:
             gt_instances = [x["instances"].to(self.detectron.device) for x in batched_inputs]
@@ -25,14 +25,14 @@ class ROIpool:
 
         box_feature = self.get_box_feature(feature_lists,boxes)
         if sum(proposals_per_batch)==0: 
-            if 'pair_id' in batched_inputs:
+            if is_training:
                 return  None, None, None, True
             else:
                 return None, None, True
 
         # cgd target
         # pair id started from 1
-        if 'pair_id' in batched_inputs:
+        if is_training:
             pair_labels = torch.LongTensor([i for data_dict ,n in zip(batched_inputs, proposals_per_batch) 
                                         for i in [data_dict['pair_id'] ]* n]).to(box_feature.device)
             return box_feature, pair_labels, pred_instances, False

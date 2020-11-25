@@ -62,4 +62,9 @@ cgd:
     
 
 
+exception:
+    seg:
+        check_image: 'FAIL-001'
+        check_num_labels: 'FAIL-002'
+        
     

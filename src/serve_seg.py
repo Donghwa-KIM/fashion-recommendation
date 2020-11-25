@@ -23,6 +23,32 @@ warnings.filterwarnings("ignore", category=UserWarning)
 logger = logging.getLogger(__name__)
 logging.basicConfig(format='%(asctime)s - %(message)s', level=logging.INFO)
 
+
+
+class FailException:
+    def __init__(self, json_path, func2failnum):
+        self.json_path = json_path
+        self.func2failnum = func2failnum
+        
+    def __call__(self, func):
+        def inner_function(*args, **kwargs):
+            try:
+                return func(*args, **kwargs)
+            except Exception as e:
+                e.args = (f'{self.func2failnum[func.__name__]} in {func.__name__} => ' + e.args[0] ,)
+                save_json(self.json_path, self.func2failnum[func.__name__],{})
+                raise 
+
+        return inner_function  
+    
+def load_model_configs(args):
+    with open(args.config_path) as f:
+        configs = yaml.load(f, Loader=yaml.FullLoader)
+    return configs
+
+ 
+
+    
 def cv2_imshow(a, **kwargs):
     a = a.clip(0, 255).astype('uint8')
     # cv2 stores colors as BGR; convert to RGB
@@ -33,17 +59,12 @@ def cv2_imshow(a, **kwargs):
             a = cv2.cvtColor(a, cv2.COLOR_BGR2RGB)
 
     return plt.imshow(a, **kwargs)
-    
+
 def get_checkpoint(args):    
     # best model search
     experiment_folder = os.path.join(args.model_weights)
     model_idx = get_best_checkpoint(experiment_folder)
     return model_idx
-
-def load_model_configs(args):
-    with open(args.config_path) as f:
-        configs = yaml.load(f, Loader=yaml.FullLoader)
-    return configs
 
 def build_categories(configs):
     MetadataCatalog.get('inference').set(thing_classes = configs['Detectron2']['LABEL_LIST']['kfashion'])
@@ -89,7 +110,6 @@ def save_json(path, code, body):
         json.dump(json_dict, f)
         logger.info("Saved json in {}".format(path))
 
-        
 def plot(args, fashion_metadata, im, outputs, labels):
     plt.figure(figsize=(7,7))
     v = Visualizer(im[:, :, ::-1],
@@ -106,8 +126,14 @@ def plot(args, fashion_metadata, im, outputs, labels):
     logger.info("Saved image in {}".format(os.path.join(args.save_path, 'images', f"{os.path.basename(args.image_path)}")))
     plt.close()
     
-if __name__ == "__main__":
+    
+    
+    
 
+    
+    
+if __name__ == "__main__":
+    
     parser = argparse.ArgumentParser()
     parser.add_argument("--image_path", type=str, default="./dataset/samples/056665.jpg", help='input image')
     parser.add_argument("--save_path", type=str, default="./dataset/seg_images", help='save root')
@@ -120,9 +146,28 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    
+
+
     # model configs
     configs = load_model_configs(args)    
+
+    # set fail_exception
+    json_path = os.path.join(args.save_path, 'jsons', f"{os.path.basename(args.image_path).split('.')[0]}.json")
+    fail_exception = FailException(json_path, configs['exception']['seg'])
+
+    
+    
+    @fail_exception
+    def check_image(im):
+        if im is None:
+            raise Exception('Can not load the image, check the image path!')
+
+    @fail_exception        
+    def check_num_labels(labels):
+        if len(labels)==0:
+            raise Exception('Nothing to be predicted for the image')
+    
+    
     # categoies info
     fashion_metadata = build_categories(configs)
     # model index
@@ -135,14 +180,16 @@ if __name__ == "__main__":
     # model for semgmentation
     predictor= get_predictor(args, configs)
     logger.info(f"Extracting for {args.image_path}")
+    # get image
     im = get_image(args)
-    
-    if im is None:
-        raise NotImplementedError('Can not load the image, check the image path!')
+    check_image(im)
     
     # prediction
     outputs = predictor(im)
-    labels = get_labels(configs, outputs)
+    
+    labels = []
+    check_num_labels(labels)
+
     logger.info(f"Extracted {len(labels)} items")
 
     # save the segmented image
@@ -150,6 +197,5 @@ if __name__ == "__main__":
 
     # save json
     server_root = os.path.join("/home/korea/fashion-recommendation/","/".join(args.save_path.split('/')[1:]))
-    json_path = os.path.join(args.save_path, 'jsons', f"{os.path.basename(args.image_path).split('.')[0]}.json")
     img_path = os.path.abspath(os.path.join(server_root, 'images', f"{os.path.basename(args.image_path)}"))
     save_json(json_path, "SUCCESS", {"filePath": img_path})
