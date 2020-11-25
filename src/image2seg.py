@@ -17,7 +17,7 @@ parser = argparse.ArgumentParser()
 
 parser.add_argument("--save_path", type=str, default="/home/appuser/fashion_repo/src",
                     help='path to save final json output')
-parser.add_argument("--image_path", type=str, default="../dataset/samples/000237.jpg",
+parser.add_argument("--image_path", type=str, default="../dataset/samples/100401.jpg",
                     help='input image')
 parser.add_argument("--model_weights", type=str, default="../model",
                     help='model checkpoints')
