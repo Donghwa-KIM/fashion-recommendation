@@ -1,6 +1,6 @@
 import torch
 from detectron2.utils.events import EventStorage
-
+from detectron2.modeling.roi_heads.fast_rcnn import fast_rcnn_inference
 
 class ROIpool:
     def __init__(self,detectron):
@@ -20,7 +20,7 @@ class ROIpool:
             proposals = self.get_proposals(images,features, gt_instances)     
         else:
             proposals = self.get_proposals(images,features)     
-
+    
         proposals_per_batch, boxes, pred_instances = self.roi_pooling(feature_lists, proposals)
 
         box_feature = self.get_box_feature(feature_lists,boxes)
@@ -57,15 +57,43 @@ class ROIpool:
         return features, [features[f] for f in self.roi_heads_module.box_in_features]
     
     def roi_pooling(self, feature_lists, proposals, is_cascade =True):
-        box_features = self.roi_heads_module.box_pooler(feature_lists, [x.proposal_boxes for x in proposals])
+                
         
         if is_cascade:
-            # get last box head
-            box_features = self.roi_heads_module.box_head[-1](box_features)
-            predictions = self.roi_heads_module.box_predictor[-1](box_features)
-            pred_instances, _ = self.roi_heads_module.box_predictor[-1].inference(predictions, proposals)
+
+            head_outputs = []  # (predictor, predictions, proposals)
+            prev_pred_boxes = None
+            image_sizes = [x.image_size for x in proposals]
+            for k in range(self.roi_heads_module.num_cascade_stages):
+                if k > 0:
+                    # The output boxes of the previous stage are used to create the input
+                    # proposals of the next stage.
+                    proposals = self.roi_heads_module._create_proposals_from_boxes(prev_pred_boxes, image_sizes)
+                predictions = self.roi_heads_module._run_stage(feature_lists, proposals, k)
+                prev_pred_boxes = self.roi_heads_module.box_predictor[k].predict_boxes(predictions, proposals)
+                head_outputs.append((self.roi_heads_module.box_predictor[k], predictions, proposals))
+            
+            scores_per_stage = [h[0].predict_probs(h[1], h[2]) for h in head_outputs]
+
+            # Average the scores across heads
+            scores = [
+                sum(list(scores_per_image)) * (1.0 / self.roi_heads_module.num_cascade_stages)
+                for scores_per_image in zip(*scores_per_stage)
+            ]
+            
+            predictor, predictions, proposals = head_outputs[-1]
+            boxes = predictor.predict_boxes(predictions, proposals)
+            pred_instances, _ = fast_rcnn_inference(
+                boxes,
+                scores,
+                image_sizes,
+                predictor.test_score_thresh,
+                predictor.test_nms_thresh,
+                predictor.test_topk_per_image,
+            )
 
         else:
+            box_features = self.roi_heads_module.box_pooler(feature_lists, [x.proposal_boxes for x in proposals])
             box_features = self.roi_heads_module.box_head(box_features)
             predictions = self.roi_heads_module.box_predictor(box_features)
             pred_instances, _ = self.roi_heads_module.box_predictor.inference(predictions, proposals)
