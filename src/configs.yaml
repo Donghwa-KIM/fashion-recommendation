@@ -73,5 +73,6 @@ exception:
         check_image: 'FAIL-001'
         check_num_labels: 'FAIL-002'
     rec:
-        'base_extract': 'FAIL_001'
-        'check_not_block': 'FAIL_002'
+        check_image: 'FAIL-001'
+        check_detected: 'FAIL_002'
+        check_not_block: 'FAIL_003'

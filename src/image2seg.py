@@ -50,16 +50,16 @@ def load_model_configs(args):
 
 parser = argparse.ArgumentParser()
 
-parser.add_argument("--save_path", type=str, default="/home/korea/fashion-recommendation/dataset/rec_images",
+parser.add_argument("--save_path", type=str, default="../dataset/rec_images",
                     help='path to save final json output')
-parser.add_argument("--image_path", type=str, default="../dataset/samples/245993.jpg",
+parser.add_argument("--image_path", type=str, default="../dataset/samples/049713.jpg",
                     help='input image')
+parser.add_argument("--model_path", type=str, default="Misc/cascade_mask_rcnn_R_101_FPN_3x.yaml", 
+                    help='--pretrained COCO dataset for semgentation task')
 parser.add_argument("--model_weights", type=str, default="../model/kfashion_cascade_mask_rcnn",
                     help='model checkpoints')
 parser.add_argument("--cgd_path", type=str, default="../model/",
                     help='cgd root path')
-parser.add_argument("--model_path", type=str, default="Misc/cascade_mask_rcnn_R_101_FPN_3x.yaml", 
-                    help='--pretrained COCO dataset for semgentation task')
 parser.add_argument("--config_path", type=str, default="../src/configs.yaml", 
                     help='-- convenient configs for models')
 parser.add_argument("--seg_path", type = str, default = '../dataset/segDB')
@@ -69,7 +69,7 @@ parser.add_argument("--extractor_path", type = str, default = '../dataset/featur
 parser.add_argument("--top_k", type = int, default = 5,
                     help = "How many items to recommend?")
 
-args = parser.parse_args(args=[])
+args = parser.parse_args()
 
 
 # Exception
@@ -104,7 +104,7 @@ def save_json(path, code, body):
         logger.info("Saved json in {}".format(path))
 
         
-#@fail_exception.handler  
+
 def base_extract(args):
 
     # model configs
@@ -120,9 +120,7 @@ def base_extract(args):
     predictor= get_predictor(args, configs)
     logger.info(f"Extracting for {args.image_path}")
     im = get_image(args)
-
-    if im is None:
-        raise NotImplementedError('Can not load the image, check the image path!')
+    check_image(im)
 
     # prediction
     outputs = predictor(im)
@@ -319,6 +317,12 @@ if __name__ == "__main__":
     json_path = os.path.join(args.save_path, 'jsons', f"{os.path.basename(args.image_path).split('.')[0]}.json")
     fail_exception = FailException(json_path, configs['exception']['rec'])
 
+
+    @fail_exception
+    def check_image(im):
+        if im is None:
+            raise Exception('Can not load the image, check the image path!')
+    
     @fail_exception
     def check_detected(classes):
         ####################
@@ -338,8 +342,6 @@ if __name__ == "__main__":
 
     # (0) make file directory
     os.makedirs(os.path.join(args.save_path, 'jsons'), exist_ok = True)
-    os.makedirs(os.path.join(args.save_path, 'images'), exist_ok = True)
-
 
     # (1) Extract
     classes, hlv_classes, pooled_feature = base_extract(args)
