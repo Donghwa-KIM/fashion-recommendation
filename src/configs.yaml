@@ -61,10 +61,10 @@ cgd:
     TRIPLE_MARGIN : 0.1
     
 
-reg:
+rec:
     CATE_MASTER_DICT: {'upper': ['jacket', 'padded jacket', 'coat', 'jumper', 'cardigan',
                                  't-shirts', 'top', 'jumpsuit', 'hoody', 'blouse', 'knitwear',
-                                 'shirts', 'vest'],
+                                 'shirts', 'vest', zipup, bratop],
                        'lower': ['pants', 'jean', 'leggings', 'skirt', 'jogger pants'],
                        'block': ['dress']}
                        
@@ -72,6 +72,6 @@ exception:
     seg:
         check_image: 'FAIL-001'
         check_num_labels: 'FAIL-002'
-    reg:
+    rec:
         'base_extract': 'FAIL_001'
         'check_not_block': 'FAIL_002'

@@ -13,13 +13,48 @@ import yaml
 
 
 
+
+
+import warnings
+warnings.filterwarnings("ignore", category=UserWarning)
+
+logger = logging.getLogger(__name__)
+logging.basicConfig(format='%(asctime)s - %(message)s', level=logging.INFO)
+
+
+
+class FailException:
+    def __init__(self, json_path, func2failnum):
+        self.json_path = json_path
+        self.func2failnum = func2failnum
+        
+    def __call__(self, func):
+        def inner_function(*args, **kwargs):
+            try:
+                return func(*args, **kwargs)
+            except Exception as e:
+                e.args = (f'{self.func2failnum[func.__name__]} in {func.__name__} => ' + e.args[0] ,)
+                save_json(self.json_path, self.func2failnum[func.__name__],{})
+                raise 
+
+        return inner_function  
+    
+def load_model_configs(args):
+    with open(args.config_path) as f:
+        configs = yaml.load(f, Loader=yaml.FullLoader)
+    return configs
+
+
+
+
+
 parser = argparse.ArgumentParser()
 
-parser.add_argument("--save_path", type=str, default="/home/appuser/fashion_repo/src",
+parser.add_argument("--save_path", type=str, default="/home/korea/fashion-recommendation/dataset/rec_images",
                     help='path to save final json output')
-parser.add_argument("--image_path", type=str, default="../dataset/samples/100401.jpg",
+parser.add_argument("--image_path", type=str, default="../dataset/samples/245993.jpg",
                     help='input image')
-parser.add_argument("--model_weights", type=str, default="../model",
+parser.add_argument("--model_weights", type=str, default="../model/kfashion_cascade_mask_rcnn",
                     help='model checkpoints')
 parser.add_argument("--cgd_path", type=str, default="../model/",
                     help='cgd root path')
@@ -28,9 +63,9 @@ parser.add_argument("--model_path", type=str, default="Misc/cascade_mask_rcnn_R_
 parser.add_argument("--config_path", type=str, default="../src/configs.yaml", 
                     help='-- convenient configs for models')
 parser.add_argument("--seg_path", type = str, default = '../dataset/segDB')
-parser.add_argument("--abs_seg_path", type = str, default = '/home/appuser/fashion_repo/src/dataset/segDB')
+parser.add_argument("--abs_seg_path", type = str, default = '/home/korea/fashion-recommendation/dataset/segDB')
 parser.add_argument("--extractor_type", type = str, default = 'cgd_pca')
-parser.add_argument("--extractor_path", type = str, default = '../model')
+parser.add_argument("--extractor_path", type = str, default = '../dataset/feature_extraction')
 parser.add_argument("--top_k", type = int, default = 5,
                     help = "How many items to recommend?")
 
@@ -38,38 +73,21 @@ args = parser.parse_args(args=[])
 
 
 # Exception
-func2failnum = {
-    'load_model_configs': 'FAIL-001',
-    'build_categories': 'FAIL-004',
-    'plot': 'FAIL-003',
-    'get_labels': 'FAIL-005',
-    'get_image': 'FAIL-006',
-    'base_extract': 'FAIL_007',
-    'check_not_block': 'FAIL_008'
-}
-
-
-
 class FailException:
     def __init__(self, json_path, func2failnum):
         self.json_path = json_path
         self.func2failnum = func2failnum
-
-    def handler(self, func):
+        
+    def __call__(self, func):
         def inner_function(*args, **kwargs):
             try:
-                func(*args, **kwargs)
+                return func(*args, **kwargs)
             except Exception as e:
                 e.args = (f'{self.func2failnum[func.__name__]} in {func.__name__} => ' + e.args[0] ,)
                 save_json(self.json_path, self.func2failnum[func.__name__],{})
                 raise 
 
-        return inner_function
-
-    
-json_path = os.path.join(args.save_path, 'jsons', f"{os.path.basename(args.image_path).split('.')[0]}.json")
-fail_exception = FailException(json_path, func2failnum)
-
+        return inner_function  
 
 
 def save_json(path, code, body):
@@ -85,7 +103,6 @@ def save_json(path, code, body):
         json.dump(json_dict, f)
         logger.info("Saved json in {}".format(path))
 
-        
         
 #@fail_exception.handler  
 def base_extract(args):
@@ -113,54 +130,44 @@ def base_extract(args):
     logger.info(f"Extracted {len(labels)} item(s): {labels}")
 
     # cgd
-    model = torch.load( os.path.join(args.cgd_path, 'cgd_model.pt')).to('cpu')
+    model = torch.load( os.path.join(args.cgd_path, 'cgd_model.pt'), map_location=torch.device('cpu'))
     logger.info(f"load cgd model from {os.path.join(args.cgd_path, 'cgd_model.pt')}")
 
     ####################
     ### Error code 1 ###
     ####################
     if not labels:
-        raise Exception("No item detected.")
+        return None, None, None
 
-    image_batch = [{'image':torch.Tensor(im.transpose(2,0,1))}]
-    roi_pooler  = ROIpool(predictor.model)
+    else:
 
-    with torch.no_grad():
-        features, pred_ins, is_empty = roi_pooler.batches(image_batch)
-        cgd, _ = model(features)
+        image_batch = [{'image':torch.Tensor(im.transpose(2,0,1))}]
+        roi_pooler  = ROIpool(predictor.model)
 
-    classes = [configs['Detectron2']['LABEL_LIST']['kfashion'][cls_.item()] 
-               for ins in pred_ins for cls_ in ins.pred_classes]
+        with torch.no_grad():
+            features, pred_ins, is_empty = roi_pooler.batches(image_batch)
+            cgd, _ = model(features)
 
-    # bigger categories:
-    hlv_classes = [dict_[0] for detected_ in classes for dict_ in cate_master_dict.items() if detected_ in dict_[1]]
+        classes = [configs['Detectron2']['LABEL_LIST']['kfashion'][cls_.item()] 
+                for ins in pred_ins for cls_ in ins.pred_classes]
 
-    with open(f'../model/pca_model.pkl', 'rb') as f:
-        pca = pickle.load(f)
+        # bigger categories:
+        hlv_classes = [dict_[0] for detected_ in classes for dict_ in cate_master_dict.items() if detected_ in dict_[1]]
 
-    X = cgd.detach().cpu().numpy()
-    cgd_pca = pca.transform(X)
+        with open(f'../model/pca_model.pkl', 'rb') as f:
+            pca = pickle.load(f)
 
-    return classes, hlv_classes, cgd_pca
-
-
-
-@fail_exception.handler
-def check_not_block(hlv_classes):
-    ####################
-    ### Error code 2 ###
-    ####################
-    if 'block' in hlv_classes:
-        raise Exception("Single dress detected, no item to recommend")
-
+        X = cgd.detach().cpu().numpy()
+        cgd_pca = pca.transform(X)
         
+        return classes, hlv_classes, cgd_pca
+
 
 # upper/lower 등 higher category 반환
 def check_what_cate(master_dict, given_label):
     cate_ = [k for k, v in master_dict.items() if given_label in v][0]
     assert cate_ is not None, "No matching category in master dictionary."
     return cate_
-
 
 
 def load_features(pooling_dir, selected_method, save_folders):
@@ -299,13 +306,34 @@ def save_valid_seg(base_dir):
 if __name__ == "__main__":
     
     # (0) Master division
-    with open(args.config_path) as f:
-        configs = yaml.load(f, Loader=yaml.FullLoader)
-    
-    cate_master_dict = configs['reg']['CATE_MASTER_DICT']
+    configs = load_model_configs(args)
+    cate_master_dict = configs['rec']['CATE_MASTER_DICT']
 
     hlv_master = list(cate_master_dict.keys())
     hlv_master.remove('block')
+
+
+    #--------------------------
+    #     Define exception
+    #--------------------------
+    json_path = os.path.join(args.save_path, 'jsons', f"{os.path.basename(args.image_path).split('.')[0]}.json")
+    fail_exception = FailException(json_path, configs['exception']['rec'])
+
+    @fail_exception
+    def check_detected(classes):
+        ####################
+        ### Error code 1 ###
+        ####################
+        if classes is None:
+            raise Exception("No Item detected in the input image.")
+
+    @fail_exception
+    def check_not_block(hlv_classes):
+        ####################
+        ### Error code 2 ###
+        ####################
+        if 'block' in hlv_classes:
+            raise Exception("Single dress detected, no item to recommend")
 
 
     # (0) make file directory
@@ -315,7 +343,7 @@ if __name__ == "__main__":
 
     # (1) Extract
     classes, hlv_classes, pooled_feature = base_extract(args)
-
+    check_detected(classes)
 
     # *** check not block
     check_not_block(hlv_classes)
@@ -359,7 +387,6 @@ if __name__ == "__main__":
             
         seg_result_json.append(tmp_seg_result_json)
     
-
     # When recommendation in successful, save json
     result_code = "SUCCESS"
     save_json(json_path, result_code, seg_result_json)
