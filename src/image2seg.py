@@ -50,22 +50,22 @@ def load_model_configs(args):
 
 parser = argparse.ArgumentParser()
 
-parser.add_argument("--save_path", type=str, default="../dataset/rec_images",
+parser.add_argument("--save_path", type=str, default="./dataset/rec_images",
                     help='path to save final json output')
-parser.add_argument("--image_path", type=str, default="../dataset/samples/049713.jpg",
+parser.add_argument("--image_path", type=str, default="./dataset/samples/049713.jpg",
                     help='input image')
 parser.add_argument("--model_path", type=str, default="Misc/cascade_mask_rcnn_R_101_FPN_3x.yaml", 
                     help='--pretrained COCO dataset for semgentation task')
-parser.add_argument("--model_weights", type=str, default="../model/kfashion_cascade_mask_rcnn",
+parser.add_argument("--model_weights", type=str, default="./model/kfashion_cascade_mask_rcnn",
                     help='model checkpoints')
-parser.add_argument("--cgd_path", type=str, default="../model/",
+parser.add_argument("--cgd_path", type=str, default="./model/",
                     help='cgd root path')
-parser.add_argument("--config_path", type=str, default="../src/configs.yaml", 
+parser.add_argument("--config_path", type=str, default="./src/configs.yaml", 
                     help='-- convenient configs for models')
-parser.add_argument("--seg_path", type = str, default = '../dataset/segDB')
+parser.add_argument("--seg_path", type = str, default = './dataset/segDB')
 parser.add_argument("--abs_seg_path", type = str, default = '/home/korea/fashion-recommendation/dataset/segDB')
 parser.add_argument("--extractor_type", type = str, default = 'cgd_pca')
-parser.add_argument("--extractor_path", type = str, default = '../dataset/feature_extraction')
+parser.add_argument("--extractor_path", type = str, default = './dataset/feature_extraction')
 parser.add_argument("--top_k", type = int, default = 5,
                     help = "How many items to recommend?")
 
@@ -152,7 +152,7 @@ def base_extract(args):
         # bigger categories:
         hlv_classes = [dict_[0] for detected_ in classes for dict_ in cate_master_dict.items() if detected_ in dict_[1]]
 
-        with open(f'../model/pca_model.pkl', 'rb') as f:
+        with open(f'./model/pca_model.pkl', 'rb') as f:
             pca = pickle.load(f)
 
         X = cgd.detach().cpu().numpy()
