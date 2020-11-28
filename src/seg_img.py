@@ -56,10 +56,21 @@ class VisFashion:
         for h_e, v in enumerate(reversed(mask.sum(axis=1))):
             if v!=0:
                 break
+
+            
         return w_s, w_e, h_s, h_e
         
     def resize_foreground(self):
-        return self.img_[self.h_s:-self.h_e, self.w_s:-self.w_e, :]
+        if self.h_e==0:
+            self.h_e=None
+        else: 
+            self.h_e = -self.h_e
+        if self.w_e ==0:
+            self.w_e=None
+        else:
+            self.w_e = -self.w_e
+
+        return self.img_[self.h_s:self.h_e, self.w_s:self.w_e, :]
         
         
         
