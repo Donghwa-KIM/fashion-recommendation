@@ -192,7 +192,6 @@ def get_features(dataset_dicts, roi_pooler, model, configs, split, total_dict,
                  resizefunc):
 
     model.eval()
-    total_dict = []    
     for d in tqdm(dataset_dicts):
         with torch.no_grad():
             im = cv2.imread(d["file_name"])
@@ -213,17 +212,18 @@ def get_features(dataset_dicts, roi_pooler, model, configs, split, total_dict,
         total_meta_lists = meta_lists*N
 
         mapping_dict = {c: meta for c, meta in zip(classes , total_meta_lists)}
-
-        set_ = [i.split('.')[0] for i in os.listdir(f"./dataset/segDB/{os.path.basename(d['file_name']).split('.')[0]}")]
-        print(os.path.basename(d['file_name']),':',sorted([key for key in mapping_dict]),'=>',sorted(set_))
-        assert sorted([key for key in mapping_dict]) == sorted(set_)
+        
+        # test
+        #set_ = [i.split('.')[0] for i in os.listdir(f"./dataset/segDB/{os.path.basename(d['file_name']).split('.')[0]}")]
+        #print(os.path.basename(d['file_name']),':',sorted([key for key in mapping_dict]),'=>',sorted(set_))
+        #assert sorted([key for key in mapping_dict]) == sorted(set_)
 
         for cls_ in mapping_dict:
             meta_lists = mapping_dict[cls_]
             total_dict.extend([{'split':split,
                                  'id': meta_lists[1],
                                  'pair_id': meta_lists[0],
-                                 'feature':cgd.detach().cpu().numpy(),
+                                 'feature':cgd.detach().cpu().numpy()[0],
                                  'label':cls_}])
     return total_dict
 
