@@ -62,17 +62,23 @@ cgd:
     
 
 rec:
-    CATE_MASTER_DICT: {'upper': ['jacket', 'padded jacket', 'coat', 'jumper', 'cardigan',
-                                 't-shirts', 'top', 'jumpsuit', 'hoody', 'blouse', 'knitwear',
-                                 'shirts', 'vest', zipup, bratop],
+    CATE_MASTER_DICT: {'upper': ['t-shirts', 'top', 'hoody', 'blouse', 'knitwear',
+                                 'shirts', 'bratop', 'dress'],
                        'lower': ['pants', 'jean', 'leggings', 'skirt', 'jogger pants'],
-                       'block': ['dress']}
-                       
+                       'outer': ['jacket', 'padded jacket', 'coat', 'jumper', 'cardigan',
+                                 'jumpsuit', 'vest', 'zipup']}
+    CATE_OPTION_DICT: {'outer': ['jacket', 'cardigan', 'coat'],
+                       'upper': ['t-shirts', 'blouse', 'knitwear', 'top'],
+                       'lower': ['pants', 'jean', 'skirt']}
+
+
 exception:
     seg:
         check_image: 'FAIL-001'
         check_num_labels: 'FAIL-002'
     rec:
-        check_image: 'FAIL-001'
-        check_detected: 'FAIL_002'
-        check_not_block: 'FAIL_003'
+        check_option_input: 'FAIL-001'
+        check_image: 'FAIL-002'
+        check_detected: 'FAIL_003'
+        check_category_redncy: 'FAIL_004'
+        check_DB: 'FAIL-005'

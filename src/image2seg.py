@@ -1,5 +1,6 @@
 from serve_seg import *
 from cgd.pooler import ROIpool
+import detectron2.data.transforms as T
 
 import torch
 import os, argparse, json, pickle
@@ -10,7 +11,7 @@ from itertools import compress
 import pytz
 from datetime import datetime
 import yaml
-
+from varname import nameof
 
 
 
@@ -46,13 +47,11 @@ def load_model_configs(args):
 
 
 
-
-
 parser = argparse.ArgumentParser()
 
 parser.add_argument("--save_path", type=str, default="./dataset/rec_images",
                     help='path to save final json output')
-parser.add_argument("--image_path", type=str, default="./dataset/samples/049713.jpg",
+parser.add_argument("--image_path", type=str, default="./dataset/samples/245993.jpg",
                     help='input image')
 parser.add_argument("--model_path", type=str, default="Misc/cascade_mask_rcnn_R_101_FPN_3x.yaml", 
                     help='--pretrained COCO dataset for semgentation task')
@@ -64,8 +63,12 @@ parser.add_argument("--config_path", type=str, default="./src/configs.yaml",
                     help='-- convenient configs for models')
 parser.add_argument("--seg_path", type = str, default = './dataset/segDB')
 parser.add_argument("--abs_seg_path", type = str, default = '/home/korea/fashion-recommendation/dataset/segDB')
-parser.add_argument("--extractor_type", type = str, default = 'cgd_pca')
+parser.add_argument("--extractor_type", type = str, default = 'cgd_pca_pairItem')
 parser.add_argument("--extractor_path", type = str, default = './dataset/feature_extraction')
+parser.add_argument("--target_category", type = str, default = 'lower',
+                    help='category option, selected from (upper, lower, outer)')
+parser.add_argument("--target_color", type = str, default = None)
+parser.add_argument("--target_style", type = str, default = "섹시")
 parser.add_argument("--top_k", type = int, default = 5,
                     help = "How many items to recommend?")
 
@@ -105,7 +108,7 @@ def save_json(path, code, body):
 
         
 
-def base_extract(args):
+def base_extract(args, cate_master_dict):
 
     # model configs
     configs = load_model_configs(args)    
@@ -138,6 +141,13 @@ def base_extract(args):
         return None, None, None
 
     else:
+        
+        # test resize func
+        resizefunc = T.ResizeShortestEdge(
+                [predictor.cfg.INPUT.MIN_SIZE_TEST, predictor.cfg.INPUT.MIN_SIZE_TEST], predictor.cfg.INPUT.MAX_SIZE_TEST
+            )
+        # test size
+        im = resizefunc.get_transform(im).apply_image(im)
 
         image_batch = [{'image':torch.Tensor(im.transpose(2,0,1))}]
         roi_pooler  = ROIpool(predictor.model)
@@ -163,26 +173,69 @@ def base_extract(args):
 
 # upper/lower 등 higher category 반환
 def check_what_cate(master_dict, given_label):
-    cate_ = [k for k, v in master_dict.items() if given_label in v][0]
-    assert cate_ is not None, "No matching category in master dictionary."
-    return cate_
+    cate_ = [k for k, v in master_dict.items() if given_label in v]
+    hlv_cate = cate_[0] if cate_ else None
+    return hlv_cate
 
 
-def load_features(pooling_dir, selected_method, save_folders):
+# 여러 카테고리 검출 등 경우 하나의 클래스만 선정
+def set_one_class(target_category, *args):
+    classes = args[0]
+    hlv_classes = args[1]
+
+
+def apply_option(original, *args):
+    
+    target_category, target_color, target_style = args[0], args[1], args[2]
+    
+    A = list(set([cgd['id'].split('.')[0] for cgd in original if check_what_cate(cate_option_dict, cgd['label']) == target_category]))
+    B = list(set([cgd['id'].split('.')[0] for cgd in original if cgd['category_color'] == target_color] if target_color is not None else [None]))
+    C = list(set([cgd['id'].split('.')[0] for cgd in original if cgd['style'] == target_style] if target_style is not None else [None]))
+    
+    valid = [np.array(k) for k in [A, B, C] if k != [None]]
+    result = np.array(list(set([cgd['id'].split('.')[0] for cgd in original])))
+    
+    for K in valid:
+        result = np.intersect1d(result, K)
+
+    result = list(result)
+    
+    return result
+    
+
+
+def load_features(pooling_dir, selected_method, cate_option_dict, detected_class, *args):
 
     pooling_dir  = pooling_dir
-    save_folders = save_folders
 
     pooling_method     = ''.join((selected_method, '.pkl'))
     pooling_method_dir = os.path.join(pooling_dir, pooling_method)
 
     with open(pooling_method_dir, 'rb') as tmp_file:
         current_method = pickle.load(tmp_file)
-
-    tmp_list_method = np.array([list(current_method[i].values())[1].split('.')[0] for i in range(len(current_method))])
-    tf_filter = list(np.isin(tmp_list_method, save_folders))
+    
+    # Filter1: color/style 적용
+    filter1 = apply_option(current_method, *args)
+    
+    # Filter 1: 색상/스타일/카테고리 옵션
+#     filter1 = [cgd['id'].split('.')[0] for cgd in current_method if cgd['category_color']==target_color and
+#                                                                     cgd['style']==target_style and
+#                                                                     check_what_cate(cate_option_dict, cgd['label'])==target_category]
+    
+    # Filter 2: d
+    filter2 = list(set([cgd['id'].split('.')[0] for cgd in current_method if cgd['label']==detected_class]))
+    
+    # 교집합
+    filtered = list(np.intersect1d(np.array(filter1), np.array(filter2)))
+    
+    logger.info(f"Items left after filtering: {len(filtered)}")
+    
+    #selected_feature = [cgd for cgd in current_method if cgd['id'].split('.')[0] in filtered]
+    tmp_list_method = np.array([cgd['id'].split('.')[0] for cgd in current_method])
+    
+    tf_filter = list(np.isin(tmp_list_method, filtered))
     selected_features = list(compress(current_method, tf_filter))
-
+    
     return selected_features
 
 
@@ -208,10 +261,6 @@ def recommend_other_cate(query,
                          k = 5,
                          seg_dir = None,
                          abs_seg_dir = None):
-    '''
-    label: knitwear, t-shirts, ...
-    wanted_type: upper/lower
-    '''
 
     assert (seg_dir is not None), "Segmented dataset's directory should be provided."
 
@@ -223,7 +272,8 @@ def recommend_other_cate(query,
     
     # Query and DB
     query = query
-    db = [item_ for item_ in DB if item_['label'] == crit]
+    db = DB
+    #db = [item_ for item_ in DB if item_['label'] == crit]
     db_same_label_num = len(db)
 
     if db_same_label_num == 0:
@@ -279,24 +329,37 @@ def recommend_other_cate(query,
         return recom_ids, recom_score, other_item_path
 
 
-def save_valid_seg(base_dir):
+    
 
-    # 2개 이상(상의/하의 등) 있는 것들만 저장
-    save_folders = []
+# def save_valid_seg(cate_master_dict, cgd_feature, base_dir, target_category, target_color, target_style):
+#     '''
+#     CGD feature vector 기준으로 필터링 수행
+#     Filter1: option(arg)에서 스타일, 컬러 일치
+#     Filter2: (상의/하의/아우터) 중 2개 카테고리 이상 포함
+#     '''
+    
+#     # 2개 이상(상의/하의 등) 있는 것들만 저장
+#     save_folders = []
+    
+#     cgd_crit1 = [cgd for cgd in cgd_feature if check_what_cate(cgd['label']) == target_category and
+#                                                cgd['category_color'] == target_color and
+#                                                cgd['style'] == target_style]
+    
+    
+    
+#     for afolder in os.listdir(base_dir):
 
-    for afolder in os.listdir(base_dir):
+#         suffix_ = ('.png', '.jpg', 'PNG', 'JPG')
+#         tmp_items = [file_ for file_ in os.listdir(os.path.join(base_dir, afolder)) if file_.endswith(suffix_)]
+#         items = list(map(lambda r: r.split('.')[0], tmp_items))
 
-        suffix_ = ('.png', '.jpg', 'PNG', 'JPG')
-        tmp_items = [file_ for file_ in os.listdir(os.path.join(base_dir, afolder)) if file_.endswith(suffix_)]
-        items = list(map(lambda r: r.split('.')[0], tmp_items))
+#         check = list(set([check_what_cate(cate_master_dict, item_) for item_ in items]))
+#         #check = [cate for cate in check if cate != 'block']
 
-        check = list(set([check_what_cate(cate_master_dict, item_) for item_ in items]))
-        check = [cate for cate in check if cate != 'block']
+#         if len(check) >= 2:
+#             save_folders.append(afolder)
 
-        if len(check) >= 2:
-            save_folders.append(afolder)
-
-    return save_folders
+#     return save_folders
 
 
     
@@ -306,10 +369,10 @@ if __name__ == "__main__":
     # (0) Master division
     configs = load_model_configs(args)
     cate_master_dict = configs['rec']['CATE_MASTER_DICT']
-
-    hlv_master = list(cate_master_dict.keys())
-    hlv_master.remove('block')
-
+    cate_option_dict = configs['rec']['CATE_OPTION_DICT']
+    
+    condition_hlv = list(cate_master_dict.keys())
+    condition_hlv.remove(args.target_category)
 
     #--------------------------
     #     Define exception
@@ -317,6 +380,11 @@ if __name__ == "__main__":
     json_path = os.path.join(args.save_path, 'jsons', f"{os.path.basename(args.image_path).split('.')[0]}.json")
     fail_exception = FailException(json_path, configs['exception']['rec'])
 
+    
+    @fail_exception
+    def check_option_input(arguments):
+        if not (arguments.target_category):
+            raise Exception('Category option not provided')    
 
     @fail_exception
     def check_image(im):
@@ -332,62 +400,87 @@ if __name__ == "__main__":
             raise Exception("No Item detected in the input image.")
 
     @fail_exception
-    def check_not_block(hlv_classes):
+    def check_category_redncy(classes, hlv_classes, features, condition_hlv, target_category):
         ####################
         ### Error code 2 ###
         ####################
-        if 'block' in hlv_classes:
-            raise Exception("Single dress detected, no item to recommend")
-
-
+        if list(set(hlv_classes)) == [target_category]:
+            raise Exception(f"Input category and target category are the same:{list(set(hlv_classes))}={[target_category]}")
+        
+        else:
+            to_use = [(classes[i], features[i]) for i, a in enumerate(hlv_classes) if a in condition_hlv]
+            return to_use[0]
+        
+        
+    @fail_exception
+    def check_DB(DB):
+        ####################
+        ### Error code 2 ###
+        ####################
+        if not DB:
+            raise Exception(f"No item to recommend, DB is empty which fits the given conditions")
+    
+    
+    # option input check
+    check_option_input(args)
+    
     # (0) make file directory
     os.makedirs(os.path.join(args.save_path, 'jsons'), exist_ok = True)
 
     # (1) Extract
-    classes, hlv_classes, pooled_feature = base_extract(args)
+    classes, hlv_classes, pooled_feature = base_extract(args, cate_master_dict)
     check_detected(classes)
-
+    
+    target_label, target_feature = check_category_redncy(classes, hlv_classes, pooled_feature, condition_hlv, args.target_category)
+    logger.info(f"Item to use for recommendation: {target_label}")
+    
     # *** check not block
-    check_not_block(hlv_classes)
+    #check_not_block(hlv_classes)
 
+    # 니트, 바지 검출 -> upper, lower
+    # (1) target이 lower라면 upper인 knit가 타겟 클래스
+    # (2) target이 outer라면 앞선 upper를 선택
 
-    # (2) Save valid folders (including 2 categories)
-    save_folders = save_valid_seg(base_dir = args.seg_path)
+#     # (2) Save valid folders (including 2 categories)
+#     filter_crit = save_valid_seg(base_dir = args.seg_path)
 
 
     # (3) Set DB
-    DB = load_features(pooling_dir     = args.extractor_path,
-                       selected_method = args.extractor_type,
-                       save_folders    = save_folders)
-
-
+    DB = load_features(args.extractor_path,
+                       args.extractor_type,
+                       cate_option_dict,
+                       target_label,
+                       args.target_category,
+                       args.target_color,
+                       args.target_style)
+    
+    check_DB(DB)
+    
     # (4) Recommend items of another category
     seg_result_json = []
-    for i, target_label in enumerate(classes):
+    tmp_seg_result_json = []
+    
+    query = target_feature
+    #wanted_type = [hlv for hlv in hlv_master if hlv != hlv_classes[i]][0]
 
-        tmp_seg_result_json = []
+    recom_ids, recom_scores, recom_items = recommend_other_cate(query = query,
+                                                                DB = DB,
+                                                                label = target_label,
+                                                                wanted_type = args.target_category,
+                                                                k = args.top_k,
+                                                                seg_dir = args.seg_path,
+                                                                abs_seg_dir = args.abs_seg_path)
 
-        query = pooled_feature[i]
-        wanted_type = [hlv for hlv in hlv_master if hlv != hlv_classes[i]][0]
+    if recom_ids is not None:
+        for zips in zip(recom_ids, recom_items, recom_scores):
+            tmp_json = dict(workId    = zips[0],
+                            file_path = zips[1],
+                            score     = zips[2])
+            tmp_seg_result_json.append(tmp_json)            
+    else:
+        tmp_seg_result_json.append({})
 
-        recom_ids, recom_scores, recom_items = recommend_other_cate(query = query,
-                                                                    DB = DB,
-                                                                    label = target_label,
-                                                                    wanted_type = wanted_type,
-                                                                    k = args.top_k,
-                                                                    seg_dir = args.seg_path,
-                                                                    abs_seg_dir = args.abs_seg_path)
-
-        if recom_ids is not None:
-            for zips in zip(recom_ids, recom_items, recom_scores):
-                tmp_json = dict(workId    = zips[0],
-                                file_path = zips[1],
-                                score     = zips[2])
-                tmp_seg_result_json.append(tmp_json)            
-        else:
-            tmp_seg_result_json.append({})
-            
-        seg_result_json.append(tmp_seg_result_json)
+    seg_result_json = tmp_seg_result_json
     
     # When recommendation in successful, save json
     result_code = "SUCCESS"
