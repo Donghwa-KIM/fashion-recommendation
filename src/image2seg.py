@@ -49,7 +49,7 @@ parser = argparse.ArgumentParser()
 
 parser.add_argument("--save_path", type=str, default="./dataset/rec_images",
                     help='path to save final json output')
-parser.add_argument("--image_path", type=str, default="./dataset/samples/245993.jpg",
+parser.add_argument("--image_path", type=str, default="./dataset/samples/147097.jpg",
                     help='input image')
 parser.add_argument("--model_path", type=str, default="Misc/cascade_mask_rcnn_R_101_FPN_3x.yaml", 
                     help='--pretrained COCO dataset for semgentation task')
@@ -63,10 +63,10 @@ parser.add_argument("--seg_path", type = str, default = './dataset/segDB')
 parser.add_argument("--abs_seg_path", type = str, default = '/home/korea/fashion-recommendation/dataset/segDB')
 parser.add_argument("--extractor_type", type = str, default = 'cgd_pca_pairItem')
 parser.add_argument("--extractor_path", type = str, default = './dataset/feature_extraction')
-parser.add_argument("--target_category", type = str, default = 'lower',
+parser.add_argument("--target_category", type = str, default = 'upper',
                     help='category option, selected from (upper, lower, outer)')
 parser.add_argument("--target_color", type = str, default = None)
-parser.add_argument("--target_style", type = str, default = "섹시")
+parser.add_argument("--target_style", type = str, default = None)
 parser.add_argument("--top_k", type = int, default = 5,
                     help = "How many items to recommend?")
 
