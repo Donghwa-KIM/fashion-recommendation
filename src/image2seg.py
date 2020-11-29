@@ -11,8 +11,6 @@ from itertools import compress
 import pytz
 from datetime import datetime
 import yaml
-from varname import nameof
-
 
 
 
@@ -134,9 +132,6 @@ def base_extract(args, cate_master_dict):
     model = torch.load( os.path.join(args.cgd_path, 'cgd_model.pt'), map_location=torch.device('cpu'))
     logger.info(f"load cgd model from {os.path.join(args.cgd_path, 'cgd_model.pt')}")
 
-    ####################
-    ### Error code 1 ###
-    ####################
     if not labels:
         return None, None, None
 
@@ -217,20 +212,14 @@ def load_features(pooling_dir, selected_method, cate_option_dict, detected_class
     # Filter1: color/style 적용
     filter1 = apply_option(current_method, *args)
     
-    # Filter 1: 색상/스타일/카테고리 옵션
-#     filter1 = [cgd['id'].split('.')[0] for cgd in current_method if cgd['category_color']==target_color and
-#                                                                     cgd['style']==target_style and
-#                                                                     check_what_cate(cate_option_dict, cgd['label'])==target_category]
-    
-    # Filter 2: d
+    # Filter 2: same label
     filter2 = list(set([cgd['id'].split('.')[0] for cgd in current_method if cgd['label']==detected_class]))
     
-    # 교집합
+    # intersection (final filtering)
     filtered = list(np.intersect1d(np.array(filter1), np.array(filter2)))
     
     logger.info(f"Items left after filtering: {len(filtered)}")
     
-    #selected_feature = [cgd for cgd in current_method if cgd['id'].split('.')[0] in filtered]
     tmp_list_method = np.array([cgd['id'].split('.')[0] for cgd in current_method])
     
     tf_filter = list(np.isin(tmp_list_method, filtered))
@@ -273,7 +262,6 @@ def recommend_other_cate(query,
     # Query and DB
     query = query
     db = DB
-    #db = [item_ for item_ in DB if item_['label'] == crit]
     db_same_label_num = len(db)
 
     if db_same_label_num == 0:
@@ -328,40 +316,6 @@ def recommend_other_cate(query,
 
         return recom_ids, recom_score, other_item_path
 
-
-    
-
-# def save_valid_seg(cate_master_dict, cgd_feature, base_dir, target_category, target_color, target_style):
-#     '''
-#     CGD feature vector 기준으로 필터링 수행
-#     Filter1: option(arg)에서 스타일, 컬러 일치
-#     Filter2: (상의/하의/아우터) 중 2개 카테고리 이상 포함
-#     '''
-    
-#     # 2개 이상(상의/하의 등) 있는 것들만 저장
-#     save_folders = []
-    
-#     cgd_crit1 = [cgd for cgd in cgd_feature if check_what_cate(cgd['label']) == target_category and
-#                                                cgd['category_color'] == target_color and
-#                                                cgd['style'] == target_style]
-    
-    
-    
-#     for afolder in os.listdir(base_dir):
-
-#         suffix_ = ('.png', '.jpg', 'PNG', 'JPG')
-#         tmp_items = [file_ for file_ in os.listdir(os.path.join(base_dir, afolder)) if file_.endswith(suffix_)]
-#         items = list(map(lambda r: r.split('.')[0], tmp_items))
-
-#         check = list(set([check_what_cate(cate_master_dict, item_) for item_ in items]))
-#         #check = [cate for cate in check if cate != 'block']
-
-#         if len(check) >= 2:
-#             save_folders.append(afolder)
-
-#     return save_folders
-
-
     
     
 if __name__ == "__main__":
@@ -381,29 +335,35 @@ if __name__ == "__main__":
     fail_exception = FailException(json_path, configs['exception']['rec'])
 
     
+    #-------------------
+    #     FAIL-001
+    #-------------------
     @fail_exception
     def check_option_input(arguments):
         if not (arguments.target_category):
             raise Exception('Category option not provided')    
 
+    #-------------------
+    #     FAIL-002
+    #-------------------
     @fail_exception
     def check_image(im):
         if im is None:
             raise Exception('Can not load the image, check the image path!')
-    
+
+    #-------------------
+    #     FAIL-003
+    #-------------------
     @fail_exception
     def check_detected(classes):
-        ####################
-        ### Error code 1 ###
-        ####################
         if classes is None:
             raise Exception("No Item detected in the input image.")
 
+    #-------------------
+    #     FAIL-004
+    #-------------------
     @fail_exception
     def check_category_redncy(classes, hlv_classes, features, condition_hlv, target_category):
-        ####################
-        ### Error code 2 ###
-        ####################
         if list(set(hlv_classes)) == [target_category]:
             raise Exception(f"Input category and target category are the same:{list(set(hlv_classes))}={[target_category]}")
         
@@ -411,12 +371,11 @@ if __name__ == "__main__":
             to_use = [(classes[i], features[i]) for i, a in enumerate(hlv_classes) if a in condition_hlv]
             return to_use[0]
         
-        
+    #-------------------
+    #     FAIL-005
+    #-------------------
     @fail_exception
     def check_DB(DB):
-        ####################
-        ### Error code 2 ###
-        ####################
         if not DB:
             raise Exception(f"No item to recommend, DB is empty which fits the given conditions")
     
@@ -433,17 +392,6 @@ if __name__ == "__main__":
     
     target_label, target_feature = check_category_redncy(classes, hlv_classes, pooled_feature, condition_hlv, args.target_category)
     logger.info(f"Item to use for recommendation: {target_label}")
-    
-    # *** check not block
-    #check_not_block(hlv_classes)
-
-    # 니트, 바지 검출 -> upper, lower
-    # (1) target이 lower라면 upper인 knit가 타겟 클래스
-    # (2) target이 outer라면 앞선 upper를 선택
-
-#     # (2) Save valid folders (including 2 categories)
-#     filter_crit = save_valid_seg(base_dir = args.seg_path)
-
 
     # (3) Set DB
     DB = load_features(args.extractor_path,
