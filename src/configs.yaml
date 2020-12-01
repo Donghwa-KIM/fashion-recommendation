@@ -81,4 +81,5 @@ exception:
         check_image: 'FAIL-002'
         check_detected: 'FAIL_003'
         check_category_redncy: 'FAIL_004'
-        check_DB: 'FAIL-005'
+        check_hlv_category: 'FAIL_005'
+        check_DB: 'FAIL-006'
