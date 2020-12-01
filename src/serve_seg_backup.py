@@ -15,7 +15,6 @@ from detectron2.utils.visualizer import Visualizer
 from detectron2.utils.visualizer import ColorMode
 from time import gmtime, strftime
 from datetime import datetime
-from time import time
 from utils import *
 
 import warnings
@@ -23,6 +22,7 @@ warnings.filterwarnings("ignore", category=UserWarning)
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(format='%(asctime)s - %(message)s', level=logging.INFO)
+
 
 
 class FailException:
@@ -36,19 +36,17 @@ class FailException:
                 return func(*args, **kwargs)
             except Exception as e:
                 e.args = (f'{self.func2failnum[func.__name__]} in {func.__name__} => ' + e.args[0] ,)
-                result_print = save_json(self.json_path, self.func2failnum[func.__name__],{})
-                print("ERROR CODE :", 103)
-                print(e)
-                print(result_print)
-                exit()
+                save_json(self.json_path, self.func2failnum[func.__name__],{})
                 raise 
 
-        return inner_function
+        return inner_function  
     
 def load_model_configs(args):
     with open(args.config_path) as f:
         configs = yaml.load(f, Loader=yaml.FullLoader)
     return configs
+
+ 
 
     
 def cv2_imshow(a, **kwargs):
@@ -62,28 +60,23 @@ def cv2_imshow(a, **kwargs):
 
     return plt.imshow(a, **kwargs)
 
-
 def get_checkpoint(args):    
     # best model search
     experiment_folder = os.path.join(args.model_weights)
     model_idx = get_best_checkpoint(experiment_folder)
     return model_idx
 
-
 def build_categories(configs):
     MetadataCatalog.get('inference').set(thing_classes = configs['Detectron2']['LABEL_LIST']['kfashion'])
     fashion_metadata = MetadataCatalog.get('inference')
     return fashion_metadata
 
-
 def get_labels(configs, outputs):
     return np.array(configs['Detectron2']['LABEL_LIST']['kfashion'])[
         outputs['instances'].pred_classes.detach().cpu().numpy()].tolist()
 
-
 def get_image(args):
     return cv2.imread(args.image_path)
-
 
 def get_predictor(args, configs):
     # model build and load
@@ -116,8 +109,6 @@ def save_json(path, code, body):
     with open(path, "w") as f:
         json.dump(json_dict, f)
         logger.info("Saved json in {}".format(path))
-    return json_dict
-
 
 def plot(args, fashion_metadata, im, outputs, labels):
     plt.figure(figsize=(7,7))
@@ -134,44 +125,38 @@ def plot(args, fashion_metadata, im, outputs, labels):
     plt.savefig(os.path.join(args.save_path,'images', f"{os.path.basename(args.image_path)}"),bbox_inches='tight')
     logger.info("Saved image in {}".format(os.path.join(args.save_path, 'images', f"{os.path.basename(args.image_path)}")))
     plt.close()
+    
+    
+    
+    
 
-
+    
+    
 if __name__ == "__main__":
-    print("Starting...")
-    t1 = time()
-    default_path = os.path.join("/home/korea", "fashion-recommendation")
-    # print(os.getcwd())
-    if os.getcwd() != default_path:
-        os.chdir(default_path)
-        print("path >>>", os.getcwd())
-    try:
-        print("[1/6] parser_args.")
-        parser = argparse.ArgumentParser()
-        parser.add_argument("--image_path", type=str, default="./dataset/samples/056665.jpg", help='input image')
-        parser.add_argument("--save_path", type=str, default="./dataset/seg_images", help='save root')
-        parser.add_argument("--model_weights", type=str, default="./model/kfashion_cascade_mask_rcnn", help='model checkpoints')
-        parser.add_argument("--model_path", type=str, default="Misc/cascade_mask_rcnn_R_101_FPN_3x.yaml", help='--pretrained COCO dataset for semgentation task')
-        parser.add_argument("--config_path", type=str, default="./src/configs.yaml", help='-- convenient configs for models')
-        args = parser.parse_args()
-    except Exception as ex:
-        print("ERROR CODE :", 101)
-        print(ex)
-        exit()
+    
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--image_path", type=str, default="./dataset/samples/056665.jpg", help='input image')
+    parser.add_argument("--save_path", type=str, default="./dataset/seg_images", help='save root')
+    parser.add_argument("--model_weights", type=str, default="./model/kfashion_cascade_mask_rcnn", help='model checkpoints')
+    parser.add_argument("--model_path", type=str, default="Misc/cascade_mask_rcnn_R_101_FPN_3x.yaml", 
+                        help='--pretrained COCO dataset for semgentation task')
+    parser.add_argument("--config_path", type=str, default="./src/configs.yaml", 
+                        help='-- convenient configs for models')
+
+
+    args = parser.parse_args()
+
+
 
     # model configs
-    try:
-        print("[2/6] load_model_configs.")
-        configs = load_model_configs(args)
-    except Exception as ex:
-        print("ERROR CODE :", 102)
-        print(ex)
-        exit()
+    configs = load_model_configs(args)    
 
-    print("[3/6] set fail_exception.")
     # set fail_exception
     json_path = os.path.join(args.save_path, 'jsons', f"{os.path.basename(args.image_path).split('.')[0]}.json")
     fail_exception = FailException(json_path, configs['exception']['seg'])
 
+    
+    
     @fail_exception
     def check_image(im):
         if im is None:
@@ -181,51 +166,36 @@ if __name__ == "__main__":
     def check_num_labels(labels):
         if len(labels)==0:
             raise Exception('Nothing to be predicted for the image')
+    
+    
+    # categoies info
+    fashion_metadata = build_categories(configs)
+    # model index
+    args.model_idx = get_checkpoint(args)
 
-    try:
-        print("[4/6] build_categories.")
-        # categoies info
-        fashion_metadata = build_categories(configs)
-        # model index
-        args.model_idx = get_checkpoint(args)
-        # save path
-        os.makedirs(os.path.join(args.save_path,'images'), exist_ok =True)
-        os.makedirs(os.path.join(args.save_path,'jsons'), exist_ok =True)
-    except Exception as ex:
-        print("ERROR CODE :", 104)
-        print(ex)
-        exit()
+    # save path
+    os.makedirs(os.path.join(args.save_path,'images'), exist_ok =True)
+    os.makedirs(os.path.join(args.save_path,'jsons'), exist_ok =True)
 
-    try:
-        print("[5/6] prediction.")
-        # model for semgmentation
-        predictor = get_predictor(args, configs)
-        logger.info(f"Extracting for {args.image_path}")
-        # get image
-        im = get_image(args)
-        check_image(im)
-        # prediction
-        outputs = predictor(im)
-        labels = get_labels(configs, outputs)
-        check_num_labels(labels)
-        logger.info(f"Extracted {len(labels)} items")
-        # save the segmented image
-        plot(args, fashion_metadata, im, outputs, labels)
-    except Exception as ex:
-        print("ERROR CODE :", 105)
-        print(ex)
-        exit()
+    # model for semgmentation
+    predictor= get_predictor(args, configs)
+    logger.info(f"Extracting for {args.image_path}")
+    # get image
+    im = get_image(args)
+    check_image(im)
+    
+    # prediction
+    outputs = predictor(im)
+    
+    labels = get_labels(configs, outputs)
+    check_num_labels(labels)
 
-    try:
-        print("[6/6] save json.")
-        # save json
-        # server_root = os.path.join("/home/korea/fashion-recommendation/","/".join(args.save_path.split('/')[1:]))
-        server_root = args.save_path
-        img_path = os.path.abspath(os.path.join(server_root, 'images', f"{os.path.basename(args.image_path)}"))
-        result_print = save_json(json_path, "SUCCESS", {"filePath": img_path})
-        print("[DONE] Total time spent : {:.4f} seconds.".format(time()-t1))
-        print(result_print)
-    except Exception as ex:
-        print("ERROR CODE :", 106)
-        print(ex)
-        exit()
+    logger.info(f"Extracted {len(labels)} items")
+
+    # save the segmented image
+    plot(args, fashion_metadata, im, outputs, labels)
+
+    # save json
+    server_root = os.path.join("/home/korea/fashion-recommendation/","/".join(args.save_path.split('/')[1:]))
+    img_path = os.path.abspath(os.path.join(server_root, 'images', f"{os.path.basename(args.image_path)}"))
+    save_json(json_path, "SUCCESS", {"filePath": img_path})

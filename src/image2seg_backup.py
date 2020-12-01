@@ -1,17 +1,18 @@
-import os, argparse, json, pickle
 from serve_seg import *
 from cgd.pooler import ROIpool
-
 import detectron2.data.transforms as T
+
 import torch
+import os, argparse, json, pickle
 import numpy as np
 import random
 import math
 from itertools import compress
 import pytz
 from datetime import datetime
-from time import time
 import yaml
+
+
 
 import warnings
 warnings.filterwarnings("ignore", category=UserWarning)
@@ -32,8 +33,7 @@ class FailException:
                 return func(*args, **kwargs)
             except Exception as e:
                 e.args = (f'{self.func2failnum[func.__name__]} in {func.__name__} => ' + e.args[0] ,)
-                result_print = save_json(self.json_path, self.func2failnum[func.__name__],{})
-                print(result_print)
+                save_json(self.json_path, self.func2failnum[func.__name__],{})
                 raise 
 
         return inner_function  
@@ -42,6 +42,35 @@ def load_model_configs(args):
     with open(args.config_path) as f:
         configs = yaml.load(f, Loader=yaml.FullLoader)
     return configs
+
+
+
+parser = argparse.ArgumentParser()
+
+parser.add_argument("--save_path", type=str, default="./dataset/rec_images",
+                    help='path to save final json output')
+parser.add_argument("--image_path", type=str, default="./dataset/samples/147097.jpg",
+                    help='input image')
+parser.add_argument("--model_path", type=str, default="Misc/cascade_mask_rcnn_R_101_FPN_3x.yaml", 
+                    help='--pretrained COCO dataset for semgentation task')
+parser.add_argument("--model_weights", type=str, default="./model/kfashion_cascade_mask_rcnn",
+                    help='model checkpoints')
+parser.add_argument("--cgd_path", type=str, default="./model/",
+                    help='cgd root path')
+parser.add_argument("--config_path", type=str, default="./src/configs.yaml", 
+                    help='-- convenient configs for models')
+parser.add_argument("--seg_path", type = str, default = './dataset/segDB')
+parser.add_argument("--abs_seg_path", type = str, default = '/home/korea/fashion-recommendation/dataset/segDB')
+parser.add_argument("--extractor_type", type = str, default = 'cgd_pca_pairItem')
+parser.add_argument("--extractor_path", type = str, default = './dataset/feature_extraction')
+parser.add_argument("--target_category", type = str, default = 'upper',
+                    help='category option, selected from (upper, lower, outer)')
+parser.add_argument("--target_color", type = str, default = None)
+parser.add_argument("--target_style", type = str, default = None)
+parser.add_argument("--top_k", type = int, default = 5,
+                    help = "How many items to recommend?")
+
+args = parser.parse_args()
 
 
 # Exception
@@ -56,8 +85,7 @@ class FailException:
                 return func(*args, **kwargs)
             except Exception as e:
                 e.args = (f'{self.func2failnum[func.__name__]} in {func.__name__} => ' + e.args[0] ,)
-                result_print = save_json(self.json_path, self.func2failnum[func.__name__],{})
-                print(result_print)
+                save_json(self.json_path, self.func2failnum[func.__name__],{})
                 raise 
 
         return inner_function  
@@ -76,7 +104,6 @@ def save_json(path, code, body):
         json.dump(json_dict, f)
         logger.info("Saved json in {}".format(path))
 
-    return json_dict
         
 
 def base_extract(args, cate_master_dict):
@@ -102,7 +129,7 @@ def base_extract(args, cate_master_dict):
     logger.info(f"Extracted {len(labels)} item(s): {labels}")
 
     # cgd
-    model = torch.load(os.path.join(args.cgd_path, 'cgd_model.pt'), map_location=torch.device('cpu'))
+    model = torch.load( os.path.join(args.cgd_path, 'cgd_model.pt'), map_location=torch.device('cpu'))
     logger.info(f"load cgd model from {os.path.join(args.cgd_path, 'cgd_model.pt')}")
 
     if not labels:
@@ -292,56 +319,22 @@ def recommend_other_cate(query,
     
     
 if __name__ == "__main__":
-    print("Starting...")
-    t1 = time()
-    default_path = os.path.join("/home/korea", "fashion-recommendation")
-    # print(os.getcwd())
-    if os.getcwd() != default_path:
-        os.chdir(default_path)
-        print("path >>>", os.getcwd())
-    try:
-        print("[1/6] parser_args.")
-        parser = argparse.ArgumentParser()
-        parser.add_argument("--save_path", type=str, default="./dataset/rec_images", help='path to save final json output')
-        parser.add_argument("--image_path", type=str, default="./dataset/samples/147097.jpg", help='input image')
-        parser.add_argument("--model_path", type=str, default="Misc/cascade_mask_rcnn_R_101_FPN_3x.yaml", help='--pretrained COCO dataset for semgentation task')
-        parser.add_argument("--model_weights", type=str, default="./model/kfashion_cascade_mask_rcnn", help='model checkpoints')
-        parser.add_argument("--cgd_path", type=str, default="./model/", help='cgd root path')
-        parser.add_argument("--config_path", type=str, default="./src/configs.yaml", help='-- convenient configs for models')
-        parser.add_argument("--seg_path", type = str, default = './dataset/segDB')
-        parser.add_argument("--abs_seg_path", type = str, default = '/home/korea/fashion-recommendation/dataset/segDB')
-        parser.add_argument("--extractor_type", type = str, default = 'cgd_pca_pairItem')
-        parser.add_argument("--extractor_path", type = str, default = './dataset/feature_extraction')
-        parser.add_argument("--target_category", type = str, default = 'upper', help='category option, selected from (upper, lower, outer)')
-        parser.add_argument("--target_color", type = str, default = None)
-        parser.add_argument("--target_style", type = str, default = None)
-        parser.add_argument("--top_k", type = int, default = 5, help = "How many items to recommend?")
-        args = parser.parse_args()
-    except Exception as ex:
-        print("ERROR CODE :", 101)
-        print(ex)
-        exit()
-
+    
     # (0) Master division
-    try:
-        print("[2/6] load_model_configs.")
-        configs = load_model_configs(args)
-        cate_master_dict = configs['rec']['CATE_MASTER_DICT']
-        cate_option_dict = configs['rec']['CATE_OPTION_DICT']
-        
-        condition_hlv = list(cate_master_dict.keys())
-        condition_hlv.remove(args.target_category)
-    except Exception as ex:
-        print("ERROR CODE :", 102)
-        print(ex)
-        exit()
+    configs = load_model_configs(args)
+    cate_master_dict = configs['rec']['CATE_MASTER_DICT']
+    cate_option_dict = configs['rec']['CATE_OPTION_DICT']
+    
+    condition_hlv = list(cate_master_dict.keys())
+    condition_hlv.remove(args.target_category)
 
-    print("[3/6] set fail_exception.")
     #--------------------------
     #     Define exception
     #--------------------------
     json_path = os.path.join(args.save_path, 'jsons', f"{os.path.basename(args.image_path).split('.')[0]}.json")
     fail_exception = FailException(json_path, configs['exception']['rec'])
+
+    
     #-------------------
     #     FAIL-001
     #-------------------
@@ -349,6 +342,7 @@ if __name__ == "__main__":
     def check_option_input(arguments):
         if not (arguments.target_category):
             raise Exception('Category option not provided')    
+
     #-------------------
     #     FAIL-002
     #-------------------
@@ -356,6 +350,7 @@ if __name__ == "__main__":
     def check_image(im):
         if im is None:
             raise Exception('Can not load the image, check the image path!')
+
     #-------------------
     #     FAIL-003
     #-------------------
@@ -363,6 +358,7 @@ if __name__ == "__main__":
     def check_detected(classes):
         if classes is None:
             raise Exception("No Item detected in the input image.")
+
     #-------------------
     #     FAIL-004
     #-------------------
@@ -374,6 +370,7 @@ if __name__ == "__main__":
         else:
             to_use = [(classes[i], features[i]) for i, a in enumerate(hlv_classes) if a in condition_hlv]
             return to_use[0]
+        
     #-------------------
     #     FAIL-005
     #-------------------
@@ -382,76 +379,57 @@ if __name__ == "__main__":
         if not DB:
             raise Exception(f"No item to recommend, DB is empty which fits the given conditions")
     
+    
+    # option input check
+    check_option_input(args)
+    
+    # (0) make file directory
+    os.makedirs(os.path.join(args.save_path, 'jsons'), exist_ok = True)
 
-    try:
-        print("[4/6] option input check.")
-        # option input check
-        check_option_input(args)
-    except Exception as ex:
-        print("ERROR CODE :", 104)
-        print(ex)
-        exit()
+    # (1) Extract
+    classes, hlv_classes, pooled_feature = base_extract(args, cate_master_dict)
+    check_detected(classes)
+    
+    target_label, target_feature = check_category_redncy(classes, hlv_classes, pooled_feature, condition_hlv, args.target_category)
+    logger.info(f"Item to use for recommendation: {target_label}")
 
-    try:
-        print("[5/6] Recommend items.")
-        # (0) make file directory
-        os.makedirs(os.path.join(args.save_path, 'jsons'), exist_ok = True)
+    # (3) Set DB
+    DB = load_features(args.extractor_path,
+                       args.extractor_type,
+                       cate_option_dict,
+                       target_label,
+                       args.target_category,
+                       args.target_color,
+                       args.target_style)
+    
+    check_DB(DB)
+    
+    # (4) Recommend items of another category
+    seg_result_json = []
+    tmp_seg_result_json = []
+    
+    query = target_feature
+    #wanted_type = [hlv for hlv in hlv_master if hlv != hlv_classes[i]][0]
 
-        # (1) Extract
-        classes, hlv_classes, pooled_feature = base_extract(args, cate_master_dict)
-        check_detected(classes)
-        target_label, target_feature = check_category_redncy(classes, hlv_classes, pooled_feature, condition_hlv, args.target_category)
-        logger.info(f"Item to use for recommendation: {target_label}")
+    recom_ids, recom_scores, recom_items = recommend_other_cate(query = query,
+                                                                DB = DB,
+                                                                label = target_label,
+                                                                wanted_type = args.target_category,
+                                                                k = args.top_k,
+                                                                seg_dir = args.seg_path,
+                                                                abs_seg_dir = args.abs_seg_path)
 
-        # (3) Set DB
-        DB = load_features(args.extractor_path,
-                           args.extractor_type,
-                           cate_option_dict,
-                           target_label,
-                           args.target_category,
-                           args.target_color,
-                           args.target_style)
-        
-        check_DB(DB)
-        
-        # (4) Recommend items of another category
-        seg_result_json = []
-        tmp_seg_result_json = []
-        
-        query = target_feature
-        #wanted_type = [hlv for hlv in hlv_master if hlv != hlv_classes[i]][0]
+    if recom_ids is not None:
+        for zips in zip(recom_ids, recom_items, recom_scores):
+            tmp_json = dict(workId    = zips[0],
+                            file_path = zips[1],
+                            score     = zips[2])
+            tmp_seg_result_json.append(tmp_json)            
+    else:
+        tmp_seg_result_json.append({})
 
-        recom_ids, recom_scores, recom_items = recommend_other_cate(query = query,
-                                                                    DB = DB,
-                                                                    label = target_label,
-                                                                    wanted_type = args.target_category,
-                                                                    k = args.top_k,
-                                                                    seg_dir = args.seg_path,
-                                                                    abs_seg_dir = args.abs_seg_path)
-
-        if recom_ids is not None:
-            for zips in zip(recom_ids, recom_items, recom_scores):
-                tmp_json = dict(workId    = zips[0],
-                                file_path = zips[1],
-                                score     = zips[2])
-                tmp_seg_result_json.append(tmp_json)            
-        else:
-            tmp_seg_result_json.append({})
-
-        seg_result_json = tmp_seg_result_json
-    except Exception as ex:
-        print("ERROR CODE :", 105)
-        print(ex)
-        exit()
-        
-    try:
-        print("[6/6] save json.")
-        # When recommendation in successful, save json
-        result_code = "SUCCESS"
-        result_print = save_json(json_path, result_code, seg_result_json)
-        print("[DONE] Total time spent : {:.4f} seconds.".format(time()-t1))
-        print(result_print)
-    except Exception as ex:
-        print("ERROR CODE :", 106)
-        print(ex)
-        exit()
+    seg_result_json = tmp_seg_result_json
+    
+    # When recommendation in successful, save json
+    result_code = "SUCCESS"
+    save_json(json_path, result_code, seg_result_json)
