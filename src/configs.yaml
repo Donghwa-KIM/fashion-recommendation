@@ -84,4 +84,4 @@ exception:
         check_hlv_category: 'FAIL_005'
         check_DB: 'FAIL-006'
     rec_test:
-	check_cgd_load: 'FAIL-001'
+        check_cgd_load: 'FAIL-001'
