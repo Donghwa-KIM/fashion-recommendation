@@ -66,10 +66,10 @@ def plot_retrievals(query_img, db_rec_img, retrieval_num, show_length = 5):
     plt.savefig('../dataset/reg_images/seg.png', dpi = 300)
 
 def recommend_other_cate(label,
-                         wanted_type,
-                         k = 5,
-                         seg_dir = None,
-                         tot_dir = None):
+                        wanted_type,
+                        k = 5,
+                        seg_dir = None,
+                        tot_dir = None):
     '''
     label: knitwear, t-shirts, ...
     wanted_type: upper/lower
