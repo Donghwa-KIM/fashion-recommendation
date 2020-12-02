@@ -9,6 +9,7 @@ import matplotlib.pyplot as plt
 import cv2
 import itertools
 import pickle
+import yaml
 from time import time
 
 
@@ -29,6 +30,12 @@ class FailException:
                 raise 
 
         return inner_function
+
+
+def load_model_configs(args):
+    with open(args.config_path) as f:
+        configs = yaml.load(f, Loader=yaml.FullLoader)
+    return configs
 
 
 def split_pooled(current_method, unique_labels):
