@@ -70,7 +70,17 @@ rec:
     CATE_OPTION_DICT: {'outer': ['jacket', 'cardigan', 'coat'],
                        'upper': ['t-shirts', 'blouse', 'knitwear', 'top'],
                        'lower': ['pants', 'jean', 'skirt']}
-
+    CATE_KOR2EN: {'재킷': 'jacket',
+                '가디건':'cardigan',
+                '코트': 'coat',
+                '티셔츠': 't-shirts',
+                '블라우스': 'blouse',
+                '니트웨어': 'knitwear',
+                '탑': 'top',
+                '팬츠': 'pants',
+                '청바지': 'jean',
+                '스커트': 'skirt'
+                }
 
 exception:
     seg:

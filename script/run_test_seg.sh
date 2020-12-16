@@ -1,20 +1,7 @@
-#
-DATA_NAME="kfashion"
-MODEL_NAME="cascade_mask_rcnn"
+# dataset root path
 INPUT_PATH="./dataset/kfashion_dataset_new"
-OUTPUT_PATH="./model"
-MODEL_PATH="Misc/cascade_mask_rcnn_R_101_FPN_3x.yaml"
-CONFIG_PATH="./src/configs.yaml"
-
-
+# test folder name
+TEST_FOLDER_NAME="test"
 
 # evaluate
-python ./src/test_segment.py \
-    --do_eval \
-    --data_name ${DATA_NAME} \
-    --model_name ${MODEL_NAME} \
-    --input_path ${INPUT_PATH} \
-    --output_path ${OUTPUT_PATH} \
-    --model_path ${MODEL_PATH} \
-    --config_path ${CONFIG_PATH}
-    
+python3 src/test_segment.py --input_path ${INPUT_PATH} --test_folder_name ${TEST_FOLDER_NAME} 

@@ -19,7 +19,25 @@ warnings.filterwarnings("ignore", category=UserWarning)
 logger = logging.getLogger(__name__)
 logging.basicConfig(format='%(asctime)s - %(message)s', level=logging.INFO)
 
-   
+
+
+class FailException:
+    def __init__(self, json_path, func2failnum):
+        self.json_path = json_path
+        self.func2failnum = func2failnum
+        
+    def __call__(self, func):
+        def inner_function(*args, **kwargs):
+            try:
+                return func(*args, **kwargs)
+            except Exception as e:
+                e.args = (f'{self.func2failnum[func.__name__]} in {func.__name__} => ' + e.args[0] ,)
+                result_print = save_json(self.json_path, self.func2failnum[func.__name__],{})
+                print(result_print)
+                raise 
+
+        return inner_function  
+    
 def load_model_configs(args):
     with open(args.config_path) as f:
         configs = yaml.load(f, Loader=yaml.FullLoader)
@@ -39,8 +57,8 @@ class FailException:
             except Exception as e:
                 e.args = (f'{self.func2failnum[func.__name__]} in {func.__name__} => ' + e.args[0] ,)
                 result_print = save_json(self.json_path, self.func2failnum[func.__name__],{})
-                # print(result_print)
-                raise
+                print(result_print)
+                raise 
 
         return inner_function  
 
@@ -58,7 +76,6 @@ def save_json(path, code, body):
         json.dump(json_dict, f)
         logger.info("Saved json in {}".format(path))
 
-    print(json_dict)
     return json_dict
         
 
@@ -139,7 +156,7 @@ def apply_option(original, *args):
     
     target_category, target_color, target_style = args[0], args[1], args[2]
     
-    A = list(set([cgd['id'].split('.')[0] for cgd in original if cgd['label'] == target_category]))
+    A = list(set([cgd['id'].split('.')[0] for cgd in original if check_what_cate(cate_option_dict, cgd['label']) == target_category]))
     B = list(set([cgd['id'].split('.')[0] for cgd in original if cgd['category_color'] == target_color] if target_color is not None else [None]))
     C = list(set([cgd['id'].split('.')[0] for cgd in original if cgd['style'] == target_style] if target_style is not None else [None]))
     
@@ -191,10 +208,10 @@ def retrieve_other_image(base_dir, input_id, wanted_type):
         # get name only
         cand_images = list(map(lambda r: r.split('.')[0], os.listdir(os.path.join(base_dir, id_))))
 
-        tmp_retrieve = [img_ for img_ in cand_images if img_ == wanted_type][0]
-        #tmp_retrieve = list(map(lambda r: ''.join((r, '.png')), tmp_retrieve))[0]
+        tmp_retrieve = [img_ for img_ in cand_images if img_ in cate_master_dict[wanted_type]]
+        tmp_retrieve = list(map(lambda r: ''.join((r, '.png')), tmp_retrieve))[0]
 
-        to_retrieve.append(''.join((tmp_retrieve, '.png')))
+        to_retrieve.append(tmp_retrieve)
 
     return to_retrieve
 
@@ -268,7 +285,7 @@ def recommend_other_cate(query,
         other_items = retrieve_other_image(seg_dir, input_id = recom_ids, wanted_type = wanted_type)
         other_item_path = [os.path.join(abs_seg_dir, id_, item_) for id_, item_ in zip(recom_ids, other_items)]
 
-        logger.info(f"RECOMMENDATION SUCCESS: {len(recom_ids)} items recommended.")
+        print(f"Query item type: {crit}, {len(recom_ids)} items recommended.")
 
         return recom_ids, recom_score, other_item_path
 
@@ -295,10 +312,10 @@ if __name__ == "__main__":
         parser.add_argument("--abs_seg_path", type = str, default = '/home/korea/fashion-recommendation/dataset/segDB')
         parser.add_argument("--extractor_type", type = str, default = 'cgd_pca_pairItem')
         parser.add_argument("--extractor_path", type = str, default = './dataset/feature_extraction')
-        parser.add_argument("--target_category", type = str, default = '니트웨어', help='category option, selected from (jacket, cardigan, coat, jean, ...)')
+        parser.add_argument("--target_category", type = str, default = 'upper', help='category option, selected from (upper, lower, outer)')
         parser.add_argument("--target_color", type = str, default = None)
         parser.add_argument("--target_style", type = str, default = None)
-        parser.add_argument("--top_k", type = int, default = 9999, help = "How many items to recommend?")
+        parser.add_argument("--top_k", type = int, default = 5, help = "How many items to recommend?")
         args = parser.parse_args()
     except Exception as ex:
         print("ERROR CODE :", 101)
@@ -311,11 +328,9 @@ if __name__ == "__main__":
         configs = load_model_configs(args)
         cate_master_dict = configs['rec']['CATE_MASTER_DICT']
         cate_option_dict = configs['rec']['CATE_OPTION_DICT']
-        # kor2en 
-        args.target_category = configs['rec']['CATE_KOR2EN'][args.target_category]
-
+        
         condition_hlv = list(cate_master_dict.keys())
-        condition_hlv.remove(check_what_cate(cate_master_dict, args.target_category))
+        condition_hlv.remove(args.target_category)
     except Exception as ex:
         print("ERROR CODE :", 102)
         print(ex)
@@ -357,24 +372,17 @@ if __name__ == "__main__":
             raise Exception(f"Input category and target category are the same:{list(set(hlv_classes))}={[target_category]}")
         
         else:
-            to_use  = [(classes[i], features[i]) for i, a in enumerate(hlv_classes) if a in condition_hlv]
-            fin_use = to_use[0] if to_use else (None, None)
-            return fin_use
+            to_use = [(classes[i], features[i]) for i, a in enumerate(hlv_classes) if a in condition_hlv]
+            return to_use[0]
     #-------------------
     #     FAIL-005
-    #-------------------
-    @fail_exception
-    def check_hlv_category(to_use):
-        if not to_use:
-            raise Exception(f"Check higher category redundancy (e.g. Detected category: skirt, target category: jean)")
-    #-------------------
-    #     FAIL-006
     #-------------------
     @fail_exception
     def check_DB(DB):
         if not DB:
             raise Exception(f"No item to recommend, DB is empty which fits the given conditions")
     
+
     try:
         print("[4/6] option input check.")
         # option input check
@@ -393,8 +401,7 @@ if __name__ == "__main__":
         classes, hlv_classes, pooled_feature = base_extract(args, cate_master_dict)
         check_detected(classes)
         target_label, target_feature = check_category_redncy(classes, hlv_classes, pooled_feature, condition_hlv, args.target_category)
-        check_hlv_category(target_label)
-        logger.info(f"Item to use for recommendation: {target_label} --> Target category: {args.target_category}")
+        logger.info(f"Item to use for recommendation: {target_label}")
 
         # (3) Set DB
         DB = load_features(args.extractor_path,
@@ -433,16 +440,17 @@ if __name__ == "__main__":
 
         seg_result_json = tmp_seg_result_json
     except Exception as ex:
-        # print("ERROR CODE :", 105)
-        # print(ex)
+        print("ERROR CODE :", 105)
+        print(ex)
         exit()
         
     try:
         print("[6/6] save json.")
         # When recommendation in successful, save json
         result_code = "SUCCESS"
-        print("[DONE] Total time spent : {:.4f} seconds.".format(time()-t1))
         result_print = save_json(json_path, result_code, seg_result_json)
+        print("[DONE] Total time spent : {:.4f} seconds.".format(time()-t1))
+        print(result_print)
     except Exception as ex:
         print("ERROR CODE :", 106)
         print(ex)
