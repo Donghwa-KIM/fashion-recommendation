@@ -22,7 +22,7 @@ logging.basicConfig(format='%(asctime)s - %(message)s', level=logging.INFO)
     
     
 def evaluate(args):
-    #print(os.getcwd())
+    print(os.getcwd())
 
     with open(args.config_path,  encoding="utf-8") as f:
         configs = yaml.load(f, Loader=yaml.FullLoader)
@@ -71,11 +71,11 @@ def evaluate(args):
     
     
 if __name__ == "__main__":
-    #default_path = os.path.join("/home/korea", "fashion-recommendation")
+    default_path = os.path.join("/home/korea", "fashion-recommendation")
     # print(os.getcwd())
-    # if os.getcwd() != default_path:
-    #     os.chdir(default_path)
-    #     print("path >>>", os.getcwd())
+    if os.getcwd() != default_path:
+        os.chdir(default_path)
+        print("path >>>", os.getcwd())
 
     parser = argparse.ArgumentParser()
     parser.add_argument('--do_eval', action='store_false', help='do evaluation' )

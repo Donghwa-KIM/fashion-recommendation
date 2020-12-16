@@ -186,10 +186,10 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
     
-    parser.add_argument("--extractor_path", type = str, default = './dataset/feature_extraction')
+    parser.add_argument("--extractor_path", type = str, default = '/home/korea/fashion-recommendation/dataset/feature_extraction')
     parser.add_argument("--extractor_type", type = str, default = 'cgd_pca')
     parser.add_argument("--set_ks", type = str, default = "1,2,5,10,20", help = "Set of k's used for testing")
-    parser.add_argument("--config_path", type = str, default = './src/configs.yaml')
+    parser.add_argument("--config_path", type = str, default = '/home/korea/fashion-recommendation/src/configs.yaml')
     
     args = parser.parse_args()
     
