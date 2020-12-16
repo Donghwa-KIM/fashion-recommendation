@@ -46,7 +46,7 @@ class FailException:
         return inner_function
     
 def load_model_configs(args):
-    with open(args.config_path) as f:
+    with open(args.config_path, encoding="utf-8") as f:
         configs = yaml.load(f, Loader=yaml.FullLoader)
     return configs
 
