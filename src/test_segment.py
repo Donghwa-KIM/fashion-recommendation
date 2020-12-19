@@ -15,14 +15,20 @@ from utils import *
 import warnings
 warnings.filterwarnings("ignore", category=UserWarning)
 
+
+os.makedirs('./results/TTA/segmentation/', exist_ok=True)
 logger = logging.getLogger(__name__)
-logging.basicConfig(format='%(asctime)s - %(message)s', level=logging.INFO)
+logging.basicConfig(format="%(asctime)s [%(levelname)s] %(message)s", 
+                    level=logging.INFO,
+                    handlers=[
+                        logging.FileHandler("./results/TTA/segmentation/segment_log.txt"),
+                        logging.StreamHandler()
+                    ])
 
-
-    
     
 def evaluate(args):
-    #print(os.getcwd())
+    
+    logger.info("Start segmentation task!")
 
     with open(args.config_path,  encoding="utf-8") as f:
         configs = yaml.load(f, Loader=yaml.FullLoader)
@@ -39,6 +45,8 @@ def evaluate(args):
     experiment_folder = os.path.join(args.output_path,f"{args.data_name}_{args.model_name}")
     model_idx = get_best_checkpoint(experiment_folder)
     
+    logger.info("Build model ...")
+
     cfg = get_cfg()
     cfg.OUTPUT_DIR = os.path.join(args.output_path,f"{args.data_name}_{args.model_name}")
     cfg.merge_from_file(model_zoo.get_config_file(args.model_path))
@@ -47,35 +55,38 @@ def evaluate(args):
     cfg.DATALOADER.NUM_WORKERS = configs['Detectron2']['DATALOADER_NUM_WORKERS'] # cpu
     cfg.SOLVER.IMS_PER_BATCH = configs['Detectron2']['SOLVER_IMS_PER_BATCH'] # allocation to 9000m
     cfg.MODEL.ROI_HEADS.BATCH_SIZE_PER_IMAGE = configs['Detectron2']['MODEL_ROI_HEADS_BATCH_SIZE_PER_IMAGE']  # number of items in batch update
-    cfg.MODEL.DEVICE = 'cpu'
+    cfg.MODEL.DEVICE = 'cuda' if torch.cuda.is_available() else 'cpu'
 
     cfg.MODEL.ROI_HEADS.NUM_CLASSES = len(configs['Detectron2']['LABEL_LIST'][args.data_name])  # num classes
     cfg.MODEL.WEIGHTS = os.path.join(args.output_path,f"{args.data_name}_{args.model_name}",f"model_{model_idx.zfill(7)}.pth")
     predictor = DefaultPredictor(cfg)
     
+    logger.info("Completed model ...")
     
-    os.makedirs('./results',exist_ok=True)
+    os.makedirs('./results/TTA',exist_ok=True)
 
     evaluator = COCOEvaluator(f"{args.data_name}_{d}", cfg, False, 
-                          output_dir=os.path.join('./results',f"{args.data_name}_{args.model_name}/"))
+                          output_dir=os.path.join('./results/TTA','segmentation'))
     val_loader = build_detection_test_loader(cfg, f"{args.data_name}_{d}" )
     # another equivalent way to evaluate the model is to use `trainer.test`
     output_dict = inference_on_dataset(predictor.model, val_loader, evaluator)
     
-    
-    
-    with open(os.path.join('./results',f"{args.data_name}_{args.model_name}/",'eval_dict.json'), 'w') as outfile:
+    with open(os.path.join('./results/TTA','segmentation','eval_dict.json'), 'w') as outfile:
         json.dump(output_dict, outfile)
     
+    logging.info('Attach Test label & Path Loading')
+    gt_data = dataset.get_fashion_dicts(d)
+    id2path = {d['image_id']: d['file_name'] for d in gt_data}
+    cat2name = {i:name for i, name in enumerate(configs['Detectron2']['LABEL_LIST'][args.data_name])}
+    df = evaluator._score_df['segm']
+    df['path'] = df['image_id'].map(id2path)
+    df['name'] = df['category_id'].map(cat2name)
+    df.to_csv('./results/TTA/segmentation/prediction.csv')
     
-    
-    
+    logger.info("Saved the predictied results.")
+
 if __name__ == "__main__":
-    #default_path = os.path.join("/home/korea", "fashion-recommendation")
-    # print(os.getcwd())
-    # if os.getcwd() != default_path:
-    #     os.chdir(default_path)
-    #     print("path >>>", os.getcwd())
+    logging.info(f'Runing {os.path.basename(__file__)}')
 
     parser = argparse.ArgumentParser()
     parser.add_argument('--do_eval', action='store_false', help='do evaluation' )
@@ -93,7 +104,7 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    #logger.info({ arg: vars(args)[arg] for arg in vars(args)})
+    logger.info("Get Argparser ...")
     
     
     if args.do_eval: 

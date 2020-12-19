@@ -6,6 +6,7 @@ import itertools
 import json
 import logging
 import numpy as np
+import pandas as pd
 import os
 import pickle
 from collections import OrderedDict
@@ -45,7 +46,7 @@ class COCOEvaluator(DatasetEvaluator):
         distributed,
         output_dir=None,
         *,
-        use_fast_impl=True,
+        use_fast_impl=False,
         kpt_oks_sigmas=(),
     ):
         """
@@ -179,6 +180,9 @@ class COCOEvaluator(DatasetEvaluator):
                 torch.save(predictions, f)
 
         self._results = OrderedDict()
+        self._TTA_results = OrderedDict()
+        self._score_df = OrderedDict()
+
         if "proposals" in predictions[0]:
             self._eval_box_proposals(predictions)
         if "instances" in predictions[0]:
@@ -225,7 +229,7 @@ class COCOEvaluator(DatasetEvaluator):
             )
         )
         for task in sorted(tasks):
-            coco_eval = (
+            coco_eval, df = (
                 _evaluate_predictions_on_coco(
                     self._coco_api,
                     coco_results,
@@ -241,8 +245,12 @@ class COCOEvaluator(DatasetEvaluator):
             res = self._derive_coco_results(
                 coco_eval, task, class_names=self._metadata.get("thing_classes")
             )
-            self._results[task] = res
 
+            self._score_df[task] = df
+            self._results[task] = res
+            TTA_result = TTA_summarize(coco_eval, ap=1, iouThr=0.5, areaRng='all', maxDets=100 )
+            self._TTA_results[task] = {'mAP@50': TTA_result[0], 'df':pd.DataFrame(TTA_result[-1], columns= self._metadata.get("thing_classes"))}
+                              
     def _eval_box_proposals(self, predictions):
         """
         Evaluate the box proposals in predictions.
@@ -568,6 +576,68 @@ def _evaluate_predictions_on_coco(
 
     coco_eval.evaluate()
     coco_eval.accumulate()
+    df = get_prediction_CSV(coco_eval.evalImgs)
     coco_eval.summarize()
 
-    return coco_eval
+    return coco_eval, df
+
+
+def TTA_summarize(coco_eval, ap=1, iouThr=0.5, areaRng='all', maxDets=100 ):
+    p = coco_eval.params
+    iStr = ' {:<18} {} @[ IoU={:<9} | area={:>6s} | maxDets={:>3d} ] = {:0.3f}'
+    titleStr = 'Average Precision' if ap == 1 else 'Average Recall'
+    typeStr = '(AP)' if ap==1 else '(AR)'
+    iouStr = '{:0.2f}:{:0.2f}'.format(p.iouThrs[0], p.iouThrs[-1]) \
+        if iouThr is None else '{:0.2f}'.format(iouThr)
+    aind = [i for i, aRng in enumerate(p.areaRngLbl) if aRng == areaRng]
+    mind = [i for i, mDet in enumerate(p.maxDets) if mDet == maxDets]
+    if ap == 1:
+        # dimension of precision: [TxRxKxAxM]
+        s = coco_eval.eval['precision']
+        # IoU
+        if iouThr is not None:
+            t = np.where(iouThr == p.iouThrs)[0]
+            s = s[t]
+        s = s[:,:,:,aind,mind]
+    else:
+        # dimension of recall: [TxKxAxM]
+        s = coco_eval.eval['recall']
+        if iouThr is not None:
+            t = np.where(iouThr == p.iouThrs)[0]
+            s = s[t]
+        s = s[:,:,aind,mind]
+    if len(s[s>-1])==0:
+        mean_s = -1
+    else:
+        mean_s = np.mean(s[s>-1])
+    print(iStr.format(titleStr, typeStr, iouStr, areaRng, maxDets, mean_s))
+    return mean_s, s[0,:,:,0]
+
+
+
+def get_prediction_CSV(evalImgs):
+    E = [e for e in evalImgs if e is not None 
+     and e['maxDet']==100 
+     and (e['aRng'][0] ==0 and e['aRng'][1] ==10000000000.0)]
+    
+    out_list = []
+    for e in E:
+        out_prediction = {}
+        out_prediction['image_id'] = e['image_id']
+        out_prediction['category_id'] = e['category_id']
+        if len(e['dtMatches'][0]) > 1: 
+            for ix in range(len(e['dtMatches'][0])):
+                out_prediction['item'] = ix
+                out_prediction['dtMatches'] = e['dtMatches'][0][ix] >0
+                out_prediction['dtScores'] = e['dtScores'][ix]
+                out_list.append(out_prediction)
+        else:
+            if len(e['dtMatches'][0]) > 0 :
+                out_prediction['item'] = 0
+
+                out_prediction['dtMatches'] = e['dtMatches'][0][0] >0
+                out_prediction['dtScores'] = e['dtScores'][0]
+                out_list.append(out_prediction)
+    
+    df = pd.DataFrame(out_list)
+    return df.sort_values(['dtScores'], ascending=False)
