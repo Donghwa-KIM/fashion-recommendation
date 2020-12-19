@@ -32,7 +32,7 @@ from sklearn.decomposition import PCA
 import warnings
 warnings.filterwarnings("ignore", category=UserWarning)
 
-os.makedirs('./results/TTA/segmentation/', exist_ok=True)
+os.makedirs('./results/TTA/recommendation/', exist_ok=True)
 logger = logging.getLogger(__name__)
 logging.basicConfig(format="%(asctime)s [%(levelname)s] %(message)s", 
                     level=logging.INFO,
