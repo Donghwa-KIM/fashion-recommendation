@@ -199,6 +199,8 @@ def calc_metrics(unique_labels, set_k, *DB):
     
 if __name__ == "__main__":
     
+    logging.info(f'Runing {os.path.basename(__file__)}')
+
     t0 = time()
 
     parser = argparse.ArgumentParser()
