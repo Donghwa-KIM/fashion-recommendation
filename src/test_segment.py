@@ -16,14 +16,16 @@ import warnings
 warnings.filterwarnings("ignore", category=UserWarning)
 
 
-os.makedirs('./results/TTA/segmentation/', exist_ok=True)
+LOG_PATH = './dataset/results/TTA/segmentation/'
+os.makedirs(LOG_PATH, exist_ok=True)
 logger = logging.getLogger(__name__)
 logging.basicConfig(format="%(asctime)s [%(levelname)s] %(message)s", 
                     level=logging.INFO,
                     handlers=[
-                        logging.FileHandler("./results/TTA/segmentation/segment_log.txt"),
+                        logging.FileHandler(os.path.join(LOG_PATH,"segment_log.txt")),
                         logging.StreamHandler()
                     ])
+
 
     
 def evaluate(args):
@@ -63,15 +65,15 @@ def evaluate(args):
     
     logger.info("Completed model ...")
     
-    os.makedirs('./results/TTA',exist_ok=True)
+    #os.makedirs('./results/TTA',exist_ok=True)
 
     evaluator = COCOEvaluator(f"{args.data_name}_{d}", cfg, False, 
-                          output_dir=os.path.join('./results/TTA','segmentation'))
+                          output_dir=LOG_PATH)
     val_loader = build_detection_test_loader(cfg, f"{args.data_name}_{d}" )
     # another equivalent way to evaluate the model is to use `trainer.test`
     output_dict = inference_on_dataset(predictor.model, val_loader, evaluator)
     
-    with open(os.path.join('./results/TTA','segmentation','eval_dict.json'), 'w') as outfile:
+    with open(os.path.join(LOG_PATH,'eval_dict.json'), 'w') as outfile:
         json.dump(output_dict, outfile)
     
     logging.info('Attach Test label & Path Loading')
@@ -81,7 +83,7 @@ def evaluate(args):
     df = evaluator._score_df['segm']
     df['path'] = df['image_id'].map(id2path)
     df['name'] = df['category_id'].map(cat2name)
-    df.to_csv('./results/TTA/segmentation/prediction.csv')
+    df.to_csv(os.path.join(LOG_PATH,'/prediction.csv'))
     
     logger.info("Saved the predictied results.")
 
