@@ -13,8 +13,15 @@ import yaml
 from time import time
 
 
+LOG_PATH = './dataset/results/TTA/recommendation/'
+os.makedirs(LOG_PATH, exist_ok=True)
 logger = logging.getLogger(__name__)
-logging.basicConfig(format='%(asctime)s - %(message)s', level=logging.INFO)
+logging.basicConfig(format="%(asctime)s [%(levelname)s] %(message)s", 
+                    level=logging.INFO,
+                    handlers=[
+                        logging.FileHandler(os.path.join(LOG_PATH,"recomm_log.txt")),
+                        logging.StreamHandler()
+                    ])
 
 
 class FailException:
@@ -38,25 +45,19 @@ def load_model_configs(args):
     return configs
 
 
-def split_pooled(current_method, unique_labels):
-    
-    tot_db = {}
-    for _label in unique_labels:
-        tmp_db = [a for a in current_method if a['label'] == _label]
-        tot_db[_label] = tmp_db
+def split_pooled(train_dataset, test_dataset, unique_labels):
 
     train_db = {}
     for _label in unique_labels:
-        tmp_db = [a for a in current_method if (a['label'] == _label) and (a['split'] in ('train', 'val'))]
+        tmp_db = [a for a in train_dataset if (a['label'] == _label) and (a['split'] in ('train', 'val'))]
         train_db[_label] = tmp_db
 
     test_db = {}
     for _label in unique_labels:
-        tmp_db = [a for a in current_method if (a['label'] == _label) and (a['split'] == 'test')]
+        tmp_db = [a for a in test_dataset if (a['label'] == _label) and (a['split'] == 'test')]
         test_db[_label] = tmp_db
         
-    return tot_db, train_db, test_db
-
+    return train_db, test_db
 
 
 def retrieve_from_db(query, db, k, print_rate = False):
@@ -82,7 +83,8 @@ def retrieve_from_db(query, db, k, print_rate = False):
 
         # similarity index(descending order)
         feats_sim_index = feats_sim.sort(descending = True)[1].tolist()
-
+        best_score = feats_sim.sort(descending = True)[0].tolist()[0]
+        
         # sorted db
         sorted_db = [db[a] for a in feats_sim_index]
         
@@ -100,6 +102,9 @@ def retrieve_from_db(query, db, k, print_rate = False):
             query_id_len = len(same_id_dbs)
 
             if not same_id_dbs:
+#                 tmp_id = query['id']
+#                 tmp_label = query['label']
+#                 logger.info(f'{tmp_id}, {tmp_label} has no pair id in DB, so passing calculation')
                 continue
 
             else:
@@ -129,14 +134,17 @@ def retrieve_from_db(query, db, k, print_rate = False):
             recall_rate_list.append(recall_rate)
             hit_rate_list.append(hit_rate)
             rr_list.append(rr)
+            
 
         # return
-        return recom_ids, recall_rate_list, hit_rate_list, rr_list
+        return recom_ids, recall_rate_list, hit_rate_list, rr_list, best_score
 
     
 def calc_metrics(unique_labels, set_k, *DB):
 
     train_db, test_db = DB[0], DB[1]
+    
+    result_pd = pd.DataFrame(columns = ['image_id', 'label', 'hit_k@1', 'hit_k@10'])
     
     real_fin_result = []
     for target_label in unique_labels:
@@ -150,25 +158,34 @@ def calc_metrics(unique_labels, set_k, *DB):
             query = test_db[target_label][idx]
             db    = train_db[target_label]
 
-            _, recall_rate_list, hit_rate_list, rr_list = retrieve_from_db(query, db, k = set_k, print_rate = False)
+            _, recall_rate_list, hit_rate_list, rr_list, best_score = retrieve_from_db(query, db, k = set_k, print_rate = False)
             
             if recall_rate_list and hit_rate_list and rr_list:
                 M_recall_rate_list.append(recall_rate_list)
                 M_hit_rate_list.append(hit_rate_list)
                 M_rr_list.append(rr_list)
-        
-        fin_result = []
-        for i, k in enumerate(set_k):
-            
-            RC = np.mean(np.array([a[i] for a in M_recall_rate_list]))
-            HT = np.mean(np.array([b[i] for b in M_hit_rate_list]))
-            RR = np.mean(np.array([c[i] for c in M_rr_list]))
-            
-            logger.info(f'Tested on: {target_label} with k: {k} || Hit: {HT:.4f}, MRR: {RR:.4f}')
+                
+                result_pd = pd.concat([result_pd, pd.DataFrame({'image_id': [os.path.splitext(query['id'])[0]],
+                                                               'label'    : target_label,
+                                                               'hit_k@1'  : [hit_rate_list[0]],
+                                                               'hit_k@10' : [hit_rate_list[1]],
+                                                               'best_sim': best_score})], axis = 0)
 
-            fin_result.append((RC, HT, RR))
+        # If none was calcuated, pass the label
+        if M_hit_rate_list:
             
-        real_fin_result.append(fin_result)
+            fin_result = []
+            for i, k in enumerate(set_k):
+
+                RC = np.mean(np.array([a[i] for a in M_recall_rate_list]))
+                HT = np.mean(np.array([b[i] for b in M_hit_rate_list]))
+                RR = np.mean(np.array([c[i] for c in M_rr_list]))
+
+                logger.info(f'Tested on: {target_label} with k: {k} || Hit: {HT:.4f}')
+
+                fin_result.append((RC, HT, RR))
+
+            real_fin_result.append(fin_result)
 
     # ---------------------------
     #     Calculate(Average)
@@ -177,7 +194,7 @@ def calc_metrics(unique_labels, set_k, *DB):
     for i, k in enumerate(set_k):
         logger.info(f"For k = {k}  HIT: {RESULT[i][1]:.4f}  MRR: {RESULT[i][2]:.4f}")
 
-    return RESULT
+    return RESULT, result_pd
     
     
 if __name__ == "__main__":
@@ -186,9 +203,11 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
     
-    parser.add_argument("--extractor_path", type = str, default = './dataset/feature_extraction')
-    parser.add_argument("--extractor_type", type = str, default = 'cgd_pca')
-    parser.add_argument("--set_ks", type = str, default = "1,2,5,10,20", help = "Set of k's used for testing")
+    parser.add_argument("--extractor_path", type = str, default = './dataset/feature_extraction/TTA')
+    parser.add_argument("--extractor_train", type = str, default = 'cgd')
+    parser.add_argument("--extractor_test", type = str, default = 'cgd_test_sample')
+    parser.add_argument("--csv_save_path", type = str, default = './dataset/results/TTA/recommendation')
+    parser.add_argument("--set_ks", type = str, default = "1,10", help = "Set of k's used for testing")
     parser.add_argument("--config_path", type = str, default = './src/configs.yaml')
     
     args = parser.parse_args()
@@ -206,20 +225,36 @@ if __name__ == "__main__":
     def check_cgd_load(cgd_dir):
         if not os.path.exists(cgd_dir):
             raise Exception('Check directory of the selected extractor')
+
+    # TRAIN DATASET(.pkl)
+    train_method_dir = os.path.join(args.extractor_path, ''.join((args.extractor_train, '.pkl')))
+    check_cgd_load(train_method_dir)
+    
+    with open(train_method_dir, 'rb') as tmp_file:
+        train_dataset = pickle.load(tmp_file)
     
     
-    selected_method_dir = os.path.join(args.extractor_path, ''.join((args.extractor_type, '.pkl')))
-    check_cgd_load(selected_method_dir)
+    # TEST DATASET(.pkl)
+    test_method_dir = os.path.join(args.extractor_path, ''.join((args.extractor_test, '.pkl')))
+    check_cgd_load(test_method_dir)
     
-    with open(selected_method_dir, 'rb') as tmp_file:
-        current_method = pickle.load(tmp_file)
+    with open(test_method_dir, 'rb') as tmp_file:
+        test_dataset = pickle.load(tmp_file)
 
     # label split
-    unique_labels = list(set([a['label'] for a in current_method]))
-    tot_db, train_db, test_db = split_pooled(current_method, unique_labels)
+    # unique_label은 테스트 기준(250개)
+    unique_labels = list(set([a['label'] for a in test_dataset]))
+    train_db, test_db = split_pooled(train_dataset, test_dataset, unique_labels)
 
     set_ks = list(map(int, args.set_ks.split(',')))
 
-    result_metrics = calc_metrics(unique_labels, set_ks, train_db, test_db)
+    result_metrics, result_pd = calc_metrics(unique_labels, set_ks, train_db, test_db)
     
+    # Save result into csv file
+    csv_save_dir = os.path.join(args.csv_save_path, 'recomm_result.csv')
+    result_pd_save = result_pd.sort_values(by = 'best_sim', ascending = False)
+
+    logger.info(f'Writing result file into csv file: {csv_save_dir}')
+    result_pd_save.to_csv(csv_save_dir, index = False, float_format='%.4f')
+
     print("[DONE] Total time spent : {:.4f} seconds.".format(time()-t0))
