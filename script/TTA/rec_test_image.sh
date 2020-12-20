@@ -1,7 +1,16 @@
-# TRAGET_ID='251648' # 078000
-# TARGET_ITEM='coat'
-TRAGET_ID='107393' #
-TARGET_ITEM='skirt'
+# good example
+TRAGET_ID='251648' # 078000
+TARGET_ITEM='coat'
+# TRAGET_ID='045880' #247129
+# TARGET_ITEM='t-shirts'
+
+## bad example
+# TRAGET_ID='070645' # 035711, top1
+# TARGET_ITEM='jean'
+# TRAGET_ID='019843' # 254544
+# TARGET_ITEM='pants'
+
+
 
 IMAGE_FROM_PATH='./dataset/kfashion_dataset_new/train_tot_images'
 IMAGE_SAVE_PATH='./dataset/results/TTA/recommendation'
