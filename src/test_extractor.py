@@ -29,101 +29,46 @@ from cgd.model import CGD,GeM,L2Norm
 from cgd.pooler import ROIpool
 from sklearn.decomposition import PCA
 
+import warnings
+warnings.filterwarnings("ignore", category=UserWarning)
 
-
+os.makedirs('./results/TTA/recommendation/', exist_ok=True)
 logger = logging.getLogger(__name__)
-logging.basicConfig(format='%(asctime)s - %(message)s', level=logging.INFO)
+logging.basicConfig(format="%(asctime)s [%(levelname)s] %(message)s", 
+                    level=logging.INFO,
+                    handlers=[
+                        logging.FileHandler("./results/TTA/segmentation/segment_log.txt"),
+                        logging.StreamHandler()
+                    ])
 
 
-
-def train(args):
-    set_seed(args.seed)
-    os.makedirs(args.output_path, exist_ok=True)
-
-    with open(args.config_path, encoding="utf-8") as f:
-        configs = yaml.load(f, Loader=yaml.FullLoader)
-    
-    logger.info(configs)
-
-    dataset = Dataset(args.input_path, args.data_name)
-
-    for d in ["train", "val"]:
-        DatasetCatalog.register(f"{args.data_name}_" + d, lambda d=d: dataset.get_fashion_dicts(d))
-        MetadataCatalog.get(f"{args.data_name}_" + d).set(thing_classes = configs['Detectron2']['LABEL_LIST'][args.data_name])
-        
-    experiment_folder = os.path.join(args.output_path,f"{args.data_name}_{args.model_name}")
-    model_idx = get_best_checkpoint(experiment_folder)
-    
-    cfg = get_cfg()
-    cfg.OUTPUT_DIR = os.path.join(args.output_path,f"{args.data_name}_{args.model_name}")
-    cfg.merge_from_file(model_zoo.get_config_file(args.model_path))
-    cfg.DATASETS.TRAIN = (f'{args.data_name}_train',)
-    cfg.DATASETS.TEST = (f'{args.data_name}_val',)
-    cfg.DATALOADER.NUM_WORKERS = configs['Detectron2']['DATALOADER_NUM_WORKERS'] # cpu
-    cfg.SOLVER.IMS_PER_BATCH = configs['cgd']['SOLVER_IMS_PER_BATCH'] 
-    cfg.MODEL.ROI_HEADS.BATCH_SIZE_PER_IMAGE = configs['Detectron2']['MODEL_ROI_HEADS_BATCH_SIZE_PER_IMAGE']  # number of items in batch update
-    cfg.MODEL.ROI_HEADS.NUM_CLASSES = len(configs['Detectron2']['LABEL_LIST'][args.data_name])  # num classes
-    cfg.MODEL.WEIGHTS = os.path.join(experiment_folder,f"model_{model_idx.zfill(7)}.pth")
-    cfg.MODEL.ROI_HEADS.SCORE_THRESH_TEST = 0.5   # set a custom testing threshold
- 
-    predictor = DefaultPredictor(cfg)
-    
-    train_loader = build_detection_train_loader(cfg)
-    val_loader = build_detection_val_loader(cfg ,
-                               cfg.DATASETS.TEST[0],
-                               DatasetMapper(cfg,True)
-                               )
-    
-    device=predictor.model.device
-    
-    selector = BatchHardTripletSelector().to(device)
-    triple_loss = TripletLoss(margin=configs['cgd']['TRIPLE_MARGIN']).to(device)
-    ce_loss = LabelSmoothingCrossEntropy(smoothing=configs['cgd']['SMOOTHING'], temperature_scale= configs['cgd']['TEMP_SCALE']).to(device)
-    
-    ###
-    
-    #cgd= torch.load("./model/middle_cgd_model.pt")
-    cgd = CGD(configs['cgd']['GD_CONFIG'], configs['cgd']['FEATURE_DIM'], configs['cgd']['BASE_DIM'], configs['cgd']['NUM_CLASS']).to(device)
-    
-    
-    optimizer = Adam(cgd.parameters(), lr= configs['cgd']['LR'])
-    lr_scheduler = MultiStepLR(optimizer, milestones=[int(0.6 * configs['cgd']['MAX_ITERS']), int(0.8 * configs['cgd']['MAX_ITERS'])], gamma=0.1)
-
-    detectron = predictor.model
-    assert not detectron.training, "Current detectron is training mode"
-    
-    roi_pooler = ROIpool(detectron)
-    
-    trainer= Trainer(detectron, roi_pooler, selector, ce_loss, triple_loss, optimizer=optimizer, 
-                     scheduler= lr_scheduler,
-                     save_path = os.path.join(args.output_path, 'cgd_model.pt'))
-    
-
-    
-    
-    trainer.train(train_loader, val_loader, cgd,  configs['cgd']['MAX_ITERS'], eval_period= configs['cgd']['EVAL_PERIOD'])    
-
-    
     
     
 def evaluate(args):
     
+    
+    logger.info("Start recommendation task!")
+    
+
     os.makedirs(args.output_path, exist_ok=True)
 
     with open(args.config_path, encoding="utf-8") as f:
         configs = yaml.load(f, Loader=yaml.FullLoader)
     
-    logger.info(configs)
-
+    #logger.info(configs)
+    
     dataset = Dataset(args.input_path, args.data_name)
     
-    for d in ["train", "val"]:
-        DatasetCatalog.register(f"{args.data_name}_" + d, lambda d=d: dataset.get_fashion_dicts(d))
-        MetadataCatalog.get(f"{args.data_name}_" + d).set(thing_classes = configs['Detectron2']['LABEL_LIST'][args.data_name])
-        
+    d = args.test_folder_name
+
+    DatasetCatalog.register(f"{args.data_name}_" + d, lambda d=d: dataset.get_fashion_dicts(d))
+    MetadataCatalog.get(f"{args.data_name}_" + d).set(thing_classes = configs['Detectron2']['LABEL_LIST'][args.data_name])
+
     experiment_folder = os.path.join(args.output_path,f"{args.data_name}_{args.model_name}")
     model_idx = get_best_checkpoint(experiment_folder)
     
+    logger.info("Build model ...")
+
     cfg = get_cfg()
     cfg.OUTPUT_DIR = os.path.join(args.output_path,f"{args.data_name}_{args.model_name}")
     cfg.merge_from_file(model_zoo.get_config_file(args.model_path))
@@ -135,16 +80,22 @@ def evaluate(args):
     cfg.MODEL.ROI_HEADS.NUM_CLASSES = len(configs['Detectron2']['LABEL_LIST'][args.data_name])  # num classes
     cfg.MODEL.WEIGHTS = os.path.join(experiment_folder,f"model_{model_idx.zfill(7)}.pth")
     cfg.MODEL.ROI_HEADS.SCORE_THRESH_TEST = 0.5   # set a custom testing threshold
+    cfg.MODEL.DEVICE = 'cuda' if torch.cuda.is_available() else 'cpu'
 
     predictor = DefaultPredictor(cfg)
     
-    train_dataset_dicts = dataset.get_fashion_dicts('train')
-    val_dataset_dicts = dataset.get_fashion_dicts('val')
-    #test_dataset_dicts = dataset.get_fashion_dicts('test')
+    logger.info("Completed detectron ...")
     
+    logger.info("Attach CGD model ...")
+
     # cgd
     model = torch.load( os.path.join(args.output_path, 'cgd_model.pt'))
+
     
+    logger.info("Load DataFiles ...")
+
+    test_dataset_dicts = dataset.get_fashion_dicts(d)
+
     # detectron
     detectron = predictor.model
     # test resize func
@@ -153,38 +104,41 @@ def evaluate(args):
         )
     
     assert not detectron.training, "Current detectron is training mode"
+    
+    
+    logger.info("Get embedded vectors ...")
 
     roi_pooler = ROIpool(detectron)
     
     total_dict = []
-    total_dict = get_features(train_dataset_dicts, roi_pooler, model, configs, 'train', total_dict, resizefunc)
-    total_dict = get_features(val_dataset_dicts, roi_pooler, model, configs, 'val', total_dict, resizefunc)
-    #total_dict = get_features(test_dataset_dicts, roi_pooler, model, configs, 'test', total_dict, resizefunc)
+    total_dict = get_features(test_dataset_dicts, roi_pooler, model, configs, 'test', total_dict, resizefunc)
     
     os.makedirs('./dataset/feature_extraction', exist_ok=True)
-
-    with open(f'./dataset/feature_extraction/cgd.pkl', 'wb') as f:
-        pickle.dump( total_dict,f)
-
-    pca_dict, pca = get_pca(total_dict)
     
-    with open(f'./dataset/feature_extraction/cgd_pca.pkl', 'wb') as f:
-        pickle.dump(pca_dict,f )
+    with open(f'./dataset/feature_extraction/cgd_{d}.pkl', 'wb') as f:
+        pickle.dump( total_dict,f)    
+#     logger.info("Load PCA model ...")
+
+#     with open(f'./model/pca_model.pkl', 'rb') as f:
+#         pca = pickle.load(f)        
         
-    with open(f'./model/pca_model.pkl', 'wb') as f:
-        pickle.dump(pca,f )        
+#     pca_dict = get_pca(total_dict, pca)
+#     logger.info("Dimension reduction Applied...")
+
+#     with open(f'./dataset/feature_extraction/cgd_pca_{d}.pkl', 'wb') as f:
+#         pickle.dump(pca_dict,f)
         
-        
-def get_pca(total_dict):
+    logger.info("Saved embedded vectors ...")
+             
+def get_pca(total_dict, pca):
     X = np.array([dict_['feature'] for dict_ in total_dict])
-    pca = PCA(whiten=True, n_components=256)
     whitened = pca.fit_transform(X)
 
     pca_dict = []
     for v, dict_ in zip(whitened, total_dict):
         dict_['feature'] = v
         pca_dict.append(dict_)
-    return pca_dict, pca
+    return pca_dict
 
 
 
@@ -228,26 +182,27 @@ def get_features(dataset_dicts, roi_pooler, model, configs, split, total_dict,
     return total_dict
 
 if __name__ == "__main__":
+    logging.info(f'Runing {os.path.basename(__file__)}')
+
     parser = argparse.ArgumentParser()
     parser.add_argument('--do_eval', action='store_true', help='do evaluation' )
     parser.add_argument("--seed", type=int, default=7, help="random seed")
     parser.add_argument("--data_name", type=str, default="kfashion", help='dataset name')
     parser.add_argument("--model_name", type=str, default="cascade_mask_rcnn", help='model_name')
     parser.add_argument("--input_path", type=str, default="../dataset/kfashion_dataset", help='input root path')
+    parser.add_argument("--test_folder_name", type=str, default="test_sample", help='test_folder_name')
+
     parser.add_argument("--output_path", type=str, default="./model/", help='output root path')
-    parser.add_argument("--model_path", type=str, default="Misc/cascade_mask_rcnn_R_50_FPN_3x.yaml", 
+    parser.add_argument("--model_path", type=str, default="Misc/cascade_mask_rcnn_R_101_FPN_3x.yaml", 
                         help='--pretrained COCO dataset for semgentation task')
-    parser.add_argument("--config_path", type=str, default="./configs.yaml", 
+    parser.add_argument("--config_path", type=str, default="./src/configs.yaml", 
                         help='-- convenient configs for models')
     
     
     args = parser.parse_args()
 
-    logger.info({ arg: vars(args)[arg] for arg in vars(args)})
+    logger.info("Get Argparser ...")
     
         
     if args.do_eval: 
         evaluate(args)
-    else:
-        train(args)
-    

@@ -22,7 +22,7 @@ def train(args):
     set_seed(args.seed)
     os.makedirs(args.output_path, exist_ok=True)
 
-    with open(args.config_path) as f:
+    with open(args.config_path, encoding="utf-8") as f:
         configs = yaml.load(f, Loader=yaml.FullLoader)
     
     logger.info(configs)
@@ -74,7 +74,7 @@ def evaluate(args):
 
     set_seed(args.seed)
 
-    with open(args.config_path) as f:
+    with open(args.config_path, encoding="utf-8") as f:
         configs = yaml.load(f, Loader=yaml.FullLoader)
     
     logger.info(configs)

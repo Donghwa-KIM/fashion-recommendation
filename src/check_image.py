@@ -21,30 +21,93 @@ from utils import *
 import warnings
 warnings.filterwarnings("ignore", category=UserWarning)
 
+os.makedirs('./results/TTA/segmentation/', exist_ok=True)
 logger = logging.getLogger(__name__)
-logging.basicConfig(format='%(asctime)s - %(message)s', level=logging.INFO)
+logging.basicConfig(format="%(asctime)s [%(levelname)s] %(message)s", 
+                    level=logging.INFO,
+                    handlers=[
+                        logging.FileHandler("./results/TTA/segmentation/segment_log.txt"),
+                        logging.StreamHandler()
+                    ])
 
 
-class FailException:
-    def __init__(self, json_path, func2failnum):
-        self.json_path = json_path
-        self.func2failnum = func2failnum
-        
-    def __call__(self, func):
-        def inner_function(*args, **kwargs):
-            try:
-                return func(*args, **kwargs)
-            except Exception as e:
-                e.args = (f'{self.func2failnum[func.__name__]} in {func.__name__} => ' + e.args[0] ,)
-                result_print = save_json(self.json_path, self.func2failnum[func.__name__],{})
-                print("ERROR CODE :", 103)
-                print(e)
-                print(result_print)
-                exit()
-                raise 
-
-        return inner_function
+def segment2points(anno):
     
+    """
+    format ((x1,y1), (x2,y2), ...) -> (x1, x2, ...) , (y1, y2, ...)
+    """
+    x_points=[]
+    y_points=[]
+    for i, v in enumerate(anno['segmentation'][0]):
+        if i % 2 ==0:
+            x_points.append(v)
+        else:
+            y_points.append(v)
+    return x_points, y_points
+
+def filter_zero_point(px,py):
+    '''
+    remove zero point mislabeled
+    '''
+    new_px=[]
+    new_py=[]
+    for x,y in zip(px,py):
+        if x!=0 or y!=0:
+            new_px.append(x)
+            new_py.append(y)
+    return new_px, new_py
+
+
+def add_filename(json_):
+    """
+    Args:
+        string: json path
+
+    Returns:
+        dict: annotion label
+    """
+    with open(json_) as f:
+        imgs_anns = json.load(f)
+        img_extension = json_.split('/')[-1].split('.')[0]+'.jpg'
+        imgs_anns['filename'] = img_extension
+    return imgs_anns    
+
+def get_label_dict(args):
+    #args.json_name = '../dataset/kfashion_dataset_new/test_sample/annos/123957.json'
+    img_root = os.path.dirname(args.image_path)
+
+    v = add_filename(args.json_path)
+
+    record = {}
+    filename = os.path.join(img_root, v["filename"])
+    height, width = cv2.imread(filename).shape[:2]
+    record["file_name"] = filename
+    record["height"] = height
+    record["width"] = width
+    record["pair_id"] = v["pair_id"]
+    items = sorted([item for item in v.keys() if 'item' in item])
+    objs = []
+    for key in items:
+        anno = v[key]
+        px, py  = segment2points(anno)
+        px, py  = filter_zero_point(px,py)
+        poly = [(x + 0.5, y + 0.5) for x, y in zip(px, py) ]
+        poly = [p for x in poly for p in x]
+
+        # no label
+        if len(poly) % 2 == 0 and len(poly) >= 6:                        
+
+            obj = {
+            "bbox": [np.min(px), np.min(py), np.max(px), np.max(py)],
+            "bbox_mode": BoxMode.XYXY_ABS,
+            "segmentation": [poly],
+            "category_id": anno['category_id'],
+            "category_name": anno['category_name']
+            }                        
+            objs.append(obj)
+    record["annotations"] = objs        
+    return record
+
 def load_model_configs(args):
     with open(args.config_path, encoding="utf-8") as f:
         configs = yaml.load(f, Loader=yaml.FullLoader)
@@ -104,51 +167,61 @@ def get_predictor(args, configs):
     return predictor
 
 
-def save_json(path, code, body):
-    tz_kor = pytz.timezone('Asia/Seoul') 
-    json_dict = {}
-    
-    json_dict["resultCode"] = code
-    json_dict["resultMessage"] = "SUCCESS" 
-    json_dict["body"] = body
-    json_dict["responseDate"] = datetime.now(tz_kor).strftime('%Y-%m-%d %H:%M:%S')
-    
-    with open(path, "w") as f:
-        json.dump(json_dict, f)
-        logger.info("Saved json in {}".format(path))
-    return json_dict
 
 
-def plot(args, fashion_metadata, im, outputs, labels):
-    plt.figure(figsize=(7,7))
+
+def plot(args, fashion_metadata, im, outputs, labels, gt):
+    #-----------true---------#    
+    im = cv2.imread(gt["file_name"])
+
+    plt.figure(figsize=(20,20))
+    plt.subplot(1,2,1)
+    plt.title('ground truths')
+    v = Visualizer(im[:, :, ::-1],
+                   metadata=fashion_metadata, 
+                   scale=0.5, 
+                   instance_mode=ColorMode.IMAGE_BW   # remove the colors of unsegmented pixels. This option is only available for segmentation models
+    )
+    
+    # ground truths
+    out = v.draw_dataset_dict(gt)
+    cv2_imshow(out.get_image()[:, :, ::-1])
+    plt.axis('off')
+   
+    
+    #-----------pred----------#
+    plt.subplot(1,2,2)
+    plt.title('pred truths')
+
+
     v = Visualizer(im[:, :, ::-1],
                    metadata=fashion_metadata, 
                    scale=0.5, 
                    instance_mode=ColorMode.IMAGE_BW   # remove the colors of unsegmented pixels. This option is only available for segmentation models
     )
     out = v.draw_instance_predictions(outputs["instances"].to("cpu"))
-
     cv2_imshow(out.get_image()[:, :, ::-1])
     plt.axis('off')
 
     plt.savefig(os.path.join(args.save_path,'images', f"{os.path.basename(args.image_path)}"),bbox_inches='tight')
     logger.info("Saved image in {}".format(os.path.join(args.save_path, 'images', f"{os.path.basename(args.image_path)}")))
     plt.close()
+ 
+    
+    
+
 
 
 if __name__ == "__main__":
-    print("Starting...")
-    t1 = time()
-    default_path = os.path.join("/home/korea", "fashion-recommendation")
-    # print(os.getcwd())
-    if os.getcwd() != default_path:
-        os.chdir(default_path)
-        print("path >>>", os.getcwd())
+    logging.info(f'Runing {os.path.basename(__file__)}')
     try:
-        print("[1/6] parser_args.")
+        print("[1/4] parser_args.")
         parser = argparse.ArgumentParser()
-        parser.add_argument("--image_path", type=str, default="./dataset/samples/056665.jpg", help='input image')
-        parser.add_argument("--save_path", type=str, default="./dataset/seg_images", help='save root')
+
+        parser.add_argument("--image_path", type=str, default="./dataset/kfashion_dataset_new/test_sample/image/123957.jpg", help='input image')
+        parser.add_argument("--json_path", type=str, default="./dataset/kfashion_dataset_new/test_sample/annos/123957.json", help='json label')
+
+        parser.add_argument("--save_path", type=str, default="./results/TTA/segmentation/", help='save root')
         parser.add_argument("--model_weights", type=str, default="./model/kfashion_cascade_mask_rcnn", help='model checkpoints')
         parser.add_argument("--model_path", type=str, default="Misc/cascade_mask_rcnn_R_101_FPN_3x.yaml", help='--pretrained COCO dataset for semgentation task')
         parser.add_argument("--config_path", type=str, default="./src/configs.yaml", help='-- convenient configs for models')
@@ -160,72 +233,43 @@ if __name__ == "__main__":
 
     # model configs
     try:
-        print("[2/6] load_model_configs.")
+        print("[2/4] load_model_configs.")
         configs = load_model_configs(args)
     except Exception as ex:
         print("ERROR CODE :", 102)
         print(ex)
         exit()
 
-    print("[3/6] set fail_exception.")
-    # set fail_exception
-    json_path = os.path.join(args.save_path, 'jsons', f"{os.path.basename(args.image_path).split('.')[0]}.json")
-    fail_exception = FailException(json_path, configs['exception']['seg'])
 
-    @fail_exception
-    def check_image(im):
-        if im is None:
-            raise Exception('Can not load the image, check the image path!')
-
-    @fail_exception        
-    def check_num_labels(labels):
-        if len(labels)==0:
-            raise Exception('Nothing to be predicted for the image')
 
     try:
-        print("[4/6] build_categories.")
+        print("[3/4] build_categories.")
         # categoies info
         fashion_metadata = build_categories(configs)
         # model index
         args.model_idx = get_checkpoint(args)
         # save path
         os.makedirs(os.path.join(args.save_path,'images'), exist_ok =True)
-        os.makedirs(os.path.join(args.save_path,'jsons'), exist_ok =True)
     except Exception as ex:
         print("ERROR CODE :", 104)
         print(ex)
         exit()
 
     try:
-        print("[5/6] prediction.")
+        print("[4/4] prediction.")
         # model for semgmentation
         predictor = get_predictor(args, configs)
         logger.info(f"Extracting for {args.image_path}")
         # get image
         im = get_image(args)
-        check_image(im)
         # prediction
         outputs = predictor(im)
         labels = get_labels(configs, outputs)
-        check_num_labels(labels)
         logger.info(f"Extracted {len(labels)} items")
         # save the segmented image
-        plot(args, fashion_metadata, im, outputs, labels)
+        gt = get_label_dict(args)
+        plot(args, fashion_metadata, im, outputs, labels, gt)
     except Exception as ex:
         print("ERROR CODE :", 105)
-        print(ex)
-        exit()
-
-    try:
-        print("[6/6] save json.")
-        # save json
-        # server_root = os.path.join("/home/korea/fashion-recommendation/","/".join(args.save_path.split('/')[1:]))
-        server_root = args.save_path
-        img_path = os.path.abspath(os.path.join(server_root, 'images', f"{os.path.basename(args.image_path)}"))
-        result_print = save_json(json_path, "SUCCESS", {"filePath": img_path})
-        print("[DONE] Total time spent : {:.4f} seconds.".format(time()-t1))
-        print(result_print)
-    except Exception as ex:
-        print("ERROR CODE :", 106)
         print(ex)
         exit()
