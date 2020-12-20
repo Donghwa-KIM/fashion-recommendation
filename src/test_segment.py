@@ -83,7 +83,7 @@ def evaluate(args):
     df = evaluator._score_df['segm']
     df['path'] = df['image_id'].map(id2path)
     df['name'] = df['category_id'].map(cat2name)
-    df.to_csv(os.path.join(LOG_PATH,'/prediction.csv'))
+    df.to_csv(os.path.join(LOG_PATH,'prediction.csv'))
     
     logger.info("Saved the predictied results.")
 
